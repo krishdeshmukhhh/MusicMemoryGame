@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
+import Script from 'next/script';
 import { Play, Trophy, Calendar, Infinity as InfinityIcon } from 'lucide-react';
 import ParticleField from '@/components/ParticleField';
 import Piano from '@/components/Piano';
@@ -222,6 +223,24 @@ export default function Page() {
 
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 z-10">
+      <Script
+        id="schema-game"
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "VideoGame",
+            "name": "pitchd.",
+            "description": "A 5-round acoustic memory game to test your perfect pitch. Compete in the verified daily run or endless practice mode.",
+            "genre": ["Musical", "Puzzle", "Educational"],
+            "playMode": "SinglePlayer",
+            "applicationCategory": "Game",
+            "operatingSystem": "WebBrowser",
+            "url": "https://pitchd.app",
+            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+          })
+        }}
+      />
       <ParticleField state={gameState} />
 
       {/* Round Indicator Header */}

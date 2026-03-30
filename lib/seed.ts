@@ -28,8 +28,10 @@ function stringToSeed(str: string): number {
   return h;
 }
 
-export function getDailySequence(dateStr: string = getDailyDateString()): string[] {
-  const seed = stringToSeed(dateStr);
+export function getDailySequenceForRound(dateStr: string, round: number): string[] {
+  // Hash the round number directly into the deterministic date string
+  const seedStr = `${dateStr}-R${round}`;
+  const seed = stringToSeed(seedStr);
   const random = mulberry32(seed);
 
   const sequence: string[] = [];

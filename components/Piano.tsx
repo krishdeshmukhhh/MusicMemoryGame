@@ -31,7 +31,7 @@ export default function Piano({
 }: { 
   onNoteSelected?: (note: string) => void,
   disabled?: boolean,
-  highlightedNotes?: { note: string, color: 'blue' | 'amber' }[]
+  highlightedNotes?: { note: string, color: 'blue' | 'red' | 'green' | 'yellow' }[]
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -61,8 +61,10 @@ export default function Piano({
           const highlight = highlightedNotes.find(h => h.note === k.note);
           
           let highlightClass = '';
-          if (highlight?.color === 'blue') highlightClass = 'ring-2 ring-blue-400 ring-inset shadow-[0_0_15px_rgba(80,140,200,0.5)]';
-          if (highlight?.color === 'amber') highlightClass = 'ring-2 ring-primary ring-inset shadow-[0_0_15px_rgba(200,146,58,0.5)]';
+          if (highlight?.color === 'blue') highlightClass = 'ring-2 ring-blue-400 ring-inset shadow-[0_0_25px_rgba(96,165,250,0.6)] z-20 after:absolute after:inset-0 after:bg-blue-400/45 after:content-[""]';
+          if (highlight?.color === 'red') highlightClass = 'ring-2 ring-red-500 ring-inset shadow-[0_0_20px_rgba(239,68,68,0.6)] z-20 after:absolute after:inset-0 after:bg-red-500/45 after:content-[""]';
+          if (highlight?.color === 'yellow') highlightClass = 'ring-2 ring-yellow-400 ring-inset shadow-[0_0_20px_rgba(250,204,21,0.6)] z-20 after:absolute after:inset-0 after:bg-yellow-400/45 after:content-[""]';
+          if (highlight?.color === 'green') highlightClass = 'ring-2 ring-green-500 ring-inset shadow-[0_0_20px_rgba(34,197,94,0.6)] z-20 after:absolute after:inset-0 after:bg-green-500/45 after:content-[""]';
 
           if (isWhite) {
             return (
@@ -74,7 +76,7 @@ export default function Piano({
                   width: 'min(48px, 11vw)',
                   height: 'min(160px, 40vw)'
                 }}
-                className={`flex-shrink-0 bg-[#f2ece0] hover:bg-[#fffaf2] active:bg-primary/30 active:scale-y-[0.98] origin-top rounded-b-md mx-[1px] relative cursor-pointer shadow-sm border border-black/10 transition-colors ${highlightClass}`}
+                className={`flex-shrink-0 bg-[#f2ece0] hover:bg-[#fffaf2] active:bg-primary/30 active:scale-y-[0.98] origin-top rounded-b-md mx-[1px] relative cursor-pointer shadow-sm border border-black/10 transition-colors overflow-hidden ${highlightClass}`}
                 aria-label={k.note}
               />
             );
@@ -91,7 +93,7 @@ export default function Piano({
                     height: 'min(100px, 25vw)',
                     left: 'calc(-0.5 * min(28px, 6vw))',
                   }}
-                  className={`absolute top-0 bg-[#1a1814] hover:bg-[#2a2620] active:scale-y-[0.98] origin-top rounded-b-sm shadow-md cursor-pointer transition-colors ${highlightClass}`}
+                  className={`absolute top-0 bg-[#1a1814] hover:bg-[#2a2620] active:scale-y-[0.98] origin-top rounded-b-sm shadow-md cursor-pointer transition-colors overflow-hidden ${highlightClass}`}
                   aria-label={k.note}
                 />
               </div>

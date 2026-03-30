@@ -44,3 +44,13 @@ ON scores FOR INSERT WITH CHECK (true);
 
 CREATE POLICY "Anyone can read scores"
 ON scores FOR SELECT USING (true);
+
+-- ==========================================
+-- V2 SCHEMA MIGRATION SCRIPT
+-- ==========================================
+-- If you are updating an existing V1 database, run these commands individually
+-- in your Supabase SQL Editor to sync your tables for the V2 features.
+
+ALTER TABLE scores ADD COLUMN IF NOT EXISTS initials TEXT;
+ALTER TABLE scores DROP CONSTRAINT IF EXISTS scores_score_check;
+ALTER TABLE scores ALTER COLUMN score TYPE FLOAT;

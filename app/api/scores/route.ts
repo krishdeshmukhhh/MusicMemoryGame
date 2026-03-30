@@ -53,11 +53,24 @@ export async function POST(request: Request) {
       throw scoreError;
     }
 
-    // 2. Update stats (Implementation stubbed for anonymity)
-    const { data: stats } = await supabase.from('user_stats')
-      .select('*').eq('device_id', device_id).single();
-    
-    return NextResponse.json({ success: true });
+    // 3. Percentile Calculation
+    const { count: totalCount } = await supabase
+      .from('scores')
+      .select('*', { count: 'exact', head: true })
+      .eq('date_str', date_str);
+      
+    const { count: beatenCount } = await supabase
+      .from('scores')
+      .select('*', { count: 'exact', head: true })
+      .eq('date_str', date_str)
+      .lt('score', score);
+
+    let percentile = 1;
+    if (totalCount && totalCount > 1 && beatenCount !== null) {
+        percentile = Math.max(1, Math.ceil(100 - ((beatenCount / totalCount) * 100)));
+    }
+
+    return NextResponse.json({ success: true, percentile });
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }

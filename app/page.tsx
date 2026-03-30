@@ -1,18 +1,19 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Play, Trophy } from 'lucide-react';
+import { Play, Trophy, Calendar, Infinity as InfinityIcon } from 'lucide-react';
 import ParticleField from '@/components/ParticleField';
 import Piano from '@/components/Piano';
 import ScoreReveal from '@/components/ScoreReveal';
 import { engine } from '@/lib/audio';
-import { generateRandomSequence } from '@/lib/seed';
+import { generateRandomSequence, getDailySequenceForRound, getDailyDateString } from '@/lib/seed';
 
 type GameState = 'home' | 'listen' | 'play' | 'reveal' | 'results';
 type LeaderboardEntry = { initials: string, score: number, device_id: string, created_at: string };
 
 export default function Page() {
   const [gameState, setGameState] = useState<GameState>('home');
+  const [playMode, setPlayMode] = useState<'daily' | 'endless' | null>(null);
 
   // 5-Round State
   const [currentRound, setCurrentRound] = useState(1);
@@ -26,6 +27,7 @@ export default function Page() {
 
   const [initials, setInitials] = useState('');
   const [isPosting, setIsPosting] = useState(false);
+  const [percentile, setPercentile] = useState<number | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
@@ -46,27 +48,37 @@ export default function Page() {
   const fetchLeaderboard = async () => {
     try {
       const res = await fetch('/api/leaderboard');
+      if (!res.ok) {
+         const errData = await res.json();
+         throw new Error(errData.error || 'Failed to fetch leaderboard');
+      }
       const data = await res.json();
       if (data.top_scores) setLeaderboard(data.top_scores);
       setShowLeaderboard(true);
     } catch (e) {
-      console.error(e);
+      console.error("Leaderboard fetch error:", e);
+      alert(`Database Error: ${e instanceof Error ? e.message : 'Is your Supabase SQL deployed?'}`);
     }
   };
 
-  const handleStart = async () => {
+  const handleStart = async (mode: 'daily' | 'endless') => {
     await engine.init();
+    setPlayMode(mode);
     setCurrentRound(1);
     setRoundScores([]);
     setFinalTotal(null);
+    setPercentile(null);
     setIsPosting(false);
     setShowLeaderboard(false);
-    startRound();
+    startRound(1, mode);
   };
 
-  const startRound = () => {
+  const startRound = (roundNum: number, mode: 'daily' | 'endless') => {
     setPlayerSequence([]);
-    const sequence = generateRandomSequence();
+    const sequence = mode === 'daily' 
+      ? getDailySequenceForRound(getDailyDateString(), roundNum)
+      : generateRandomSequence();
+      
     setCorrectSequence(sequence);
     setGameState('listen');
     playTargetSequence(sequence);
@@ -108,7 +120,7 @@ export default function Page() {
 
     if (currentRound < 5) {
       setCurrentRound(r => r + 1);
-      startRound();
+      startRound(currentRound + 1, playMode!);
     } else {
       const total = newScores.reduce((a, b) => a + b, 0);
       const exactTotal = Math.round(total * 100) / 100;
@@ -139,7 +151,7 @@ export default function Page() {
     }
 
     try {
-      await fetch('/api/scores', {
+      const res = await fetch('/api/scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -150,17 +162,44 @@ export default function Page() {
           initials: initials.toUpperCase() || 'NAN'
         })
       });
+      
+      if (!res.ok) {
+         const errData = await res.json();
+         throw new Error(errData.error || 'Failed to post score');
+      }
+
+      const data = await res.json();
+      if (data.percentile) {
+         setPercentile(data.percentile);
+      }
+      
       generateShareText();
     } catch (e) {
-      console.error(e);
+      console.error("Score POST error:", e);
+      alert(`Submission Failed: ${e instanceof Error ? e.message : 'Database error'}. Ensure schema.sql has been migrated properly in Supabase.`);
       setIsPosting(false);
     }
   };
 
   const generateShareText = () => {
-    let text = `pitchd — 5 Round Sum\n`;
-    text += `Score: ${finalTotal?.toFixed(2)}/50\n`;
-    text += `https://pitchd.app`;
+    const prefix = playMode === 'daily' ? 'Daily pitchd' : 'pitchd — Endless Mode';
+    let text = `${prefix} — ${finalTotal?.toFixed(2)} / 50\n`;
+    if (percentile) {
+       text += `Ranked in the Top ${percentile}% 🏆\n\n`;
+    } else {
+       text += `\n`;
+    }
+    
+    let emojiRow = '';
+    roundScores.forEach(score => {
+      if (score >= 9.0) emojiRow += '🟩';
+      else if (score >= 6.5) emojiRow += '🟨';
+      else emojiRow += '🟥';
+    });
+    
+    text += `${emojiRow}\n\n`;
+    text += `pitchd.app`;
+    
     navigator.clipboard.writeText(text);
     alert('Score Posted & Copied to clipboard!');
   };
@@ -247,16 +286,29 @@ export default function Page() {
                </span>
 
                <div className="flex items-center gap-4 relative z-10">
-                  {/* Play Button */}
+                  {/* Daily Button */}
                   <div className="flex flex-col items-center gap-2">
                     <button 
-                      onClick={handleStart}
+                      onClick={() => handleStart('daily')}
+                      className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
+                    >
+                      <Calendar className="size-6 mb-0.5" />
+                    </button>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Daily</span>
+                  </div>
+
+                  {/* Endless Button */}
+                  <div className="flex flex-col items-center gap-2">
+                    <button 
+                      onClick={() => handleStart('endless')}
                       className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                     >
-                      <Play className="size-6 fill-current ml-1" />
+                      <InfinityIcon className="size-8 stroke-[1.5]" />
                     </button>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Play</span>
+                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Endless</span>
                   </div>
+                  
+                  <div className="h-10 w-px bg-white/10 mx-2" />
 
                   {/* Leaderboard Button */}
                   <div className="flex flex-col items-center gap-2">
@@ -342,7 +394,9 @@ export default function Page() {
           <div className="relative flex flex-col w-full max-w-lg animate-in fade-in slide-in-from-bottom-8 duration-1000">
             
             <div className="flex flex-col items-center text-center">
-              <h2 className="text-text-muted text-sm tracking-[0.3em] uppercase mb-4 font-sans">Performance</h2>
+              <h2 className="text-text-muted text-sm tracking-[0.3em] uppercase mb-4 font-sans">
+                {percentile ? `Top ${percentile}% Today` : 'Performance'}
+              </h2>
               <div className="flex items-baseline justify-center gap-2">
                 <span className="text-[7rem] leading-none font-display text-white tracking-tighter">
                   {finalTotal?.toFixed(2)}
@@ -365,11 +419,13 @@ export default function Page() {
             {/* Submit Block */}
             <div className="flex flex-col sm:flex-row gap-2 w-full mt-12 bg-surface-2 border border-border p-2 rounded-full">
               <input
+                autoFocus
                 type="text"
                 placeholder="INT"
                 maxLength={3}
                 value={initials}
                 onChange={(e) => setInitials(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') postScore(); }}
                 className="w-full sm:w-24 bg-transparent px-6 py-4 text-center text-white font-sans text-lg focus:outline-none placeholder-text-faint uppercase tracking-[0.2em]"
               />
               <button
@@ -381,12 +437,20 @@ export default function Page() {
               </button>
             </div>
             
-            <button 
-              onClick={() => handleStart()}
-              className="mt-12 text-text-muted hover:text-white text-xs tracking-[0.2em] uppercase transition-colors text-center w-full"
-            >
-              Play Again
-            </button>
+            <div className="mt-12 flex flex-col gap-3">
+              <button 
+                onClick={() => handleStart('daily')}
+                className="text-text-muted hover:text-white text-xs tracking-[0.2em] uppercase transition-colors text-center w-full"
+              >
+                Play Daily Run
+              </button>
+              <button 
+                onClick={() => handleStart('endless')}
+                className="text-text-muted hover:text-white text-xs tracking-[0.2em] uppercase transition-colors text-center w-full"
+              >
+                Play Endless Practice
+              </button>
+            </div>
           </div>
         )}
 

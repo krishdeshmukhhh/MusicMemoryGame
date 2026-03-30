@@ -81,11 +81,9 @@ export default function ParticleField({ state }: { state: string }) {
 
     // Animation Loop
     let driftSpeed = 0.001;
-    let clock = new THREE.Clock();
     
     const animate = () => {
       requestAnimationFrame(animate);
-      const delta = clock.getDelta();
       
       if (particlesRef.current) {
         // Slow upward drift

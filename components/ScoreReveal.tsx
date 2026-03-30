@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { scoreNote } from '@/lib/seed';
+import { scoreNote, NOTES } from '@/lib/seed';
 import { engine } from '@/lib/audio';
 import gsap from 'gsap';
 import Piano from './Piano';
@@ -92,7 +92,7 @@ const QUIPS = {
 };
 
 export default function ScoreReveal({ correctSequence, playerSequence, onComplete }: ScoreRevealProps) {
-  const [highlights, setHighlights] = useState<{ note: string, color: 'blue' | 'amber' }[]>([]);
+  const [highlights, setHighlights] = useState<{ note: string, color: 'blue' | 'red' | 'green' | 'yellow' }[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
   const scoreRef = useRef(0);
 
@@ -117,10 +117,25 @@ export default function ScoreReveal({ correctSequence, playerSequence, onComplet
         await new Promise(r => setTimeout(r, 600));
 
         if (!isMounted) return;
-        setHighlights([
-          { note: correct, color: 'blue' },
-          { note: player, color: 'amber' }
-        ]);
+        
+        const dist = Math.abs(NOTES.indexOf(player) - NOTES.indexOf(correct));
+        
+        if (player === correct) {
+          setHighlights([
+            { note: correct, color: 'green' }
+          ]);
+        } else if (dist <= 2) {
+          setHighlights([
+            { note: correct, color: 'blue' },
+            { note: player, color: 'yellow' }
+          ]);
+        } else {
+          setHighlights([
+            { note: correct, color: 'blue' },
+            { note: player, color: 'red' }
+          ]);
+        }
+        
         engine.playNote(player, '8n');
 
         const points = scoreNote(player, correct);
@@ -189,8 +204,9 @@ export default function ScoreReveal({ correctSequence, playerSequence, onComplet
       <div className="mt-4 h-12 flex items-center justify-center">
         {!isRevealing && (
           <button
+            autoFocus
             onClick={() => onComplete(finalScoreRef.current)}
-            className="px-10 py-3 rounded-full border border-border text-white hover:bg-white hover:text-black transition-colors text-sm font-semibold tracking-widest uppercase animate-in fade-in zoom-in-95"
+            className="px-10 py-3 rounded-full border border-border text-white hover:bg-white hover:text-black transition-colors text-sm font-semibold tracking-widest uppercase animate-in fade-in zoom-in-95 focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white focus:text-black"
           >
             Next Round
           </button>

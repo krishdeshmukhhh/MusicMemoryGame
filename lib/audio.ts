@@ -41,6 +41,12 @@ class AudioEngine {
     await reverb.generate();
 
     Tone.Transport.bpm.value = 120;
+    
+    // PRE-COMPILE WARMUP: Web Audio takes ~50ms to JIT compile the native audio nodes 
+    // for the very first note. Triggering a silent note here forces compilation immediately 
+    // so the first round's sequence plays perfectly in sync.
+    this.synth.triggerAttackRelease(['C4', 'E4', 'G4'], '32n', Tone.now(), 0);
+
     this.isInitialized = true;
   }
 

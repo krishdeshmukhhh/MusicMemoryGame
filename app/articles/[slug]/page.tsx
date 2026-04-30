@@ -13,12 +13,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: `${title} | pitchd. Articles`,
     description: `Read our comprehensive guide on ${title} and test your ear on pitchd.net.`,
     alternates: {
-      canonical: `https://pitchd.net/articles/${params.slug}`,
+      canonical: `https://pitchd.net/articles/${slug}`,
     },
     openGraph: {
       title: `${title} | pitchd.`,
       description: `Read our comprehensive guide on ${title} and test your ear on pitchd.net.`,
-      url: `https://pitchd.net/articles/${params.slug}`,
+      url: `https://pitchd.net/articles/${slug}`,
       type: 'article',
     }
   };

@@ -3,10 +3,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import Script from 'next/script';
 import Link from 'next/link';
-import { Play, Trophy, Calendar, Infinity as InfinityIcon } from 'lucide-react';
+import { Play, Trophy, Calendar, Infinity as InfinityIcon, BarChart2 } from 'lucide-react';
 import ParticleField from '@/components/ParticleField';
 import Piano from '@/components/Piano';
 import ScoreReveal from '@/components/ScoreReveal';
+import StatsModal from '@/components/StatsModal';
 import { engine } from '@/lib/audio';
 import { generateRandomSequence, getDailySequenceForRound, getDailyDateString } from '@/lib/seed';
 
@@ -34,6 +35,7 @@ export default function Page() {
   const [showError, setShowError] = useState(false);
   const [percentile, setPercentile] = useState<number | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [showStats, setShowStats] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   const [activeNoteIdx, setActiveNoteIdx] = useState<number | null>(null);
@@ -153,6 +155,14 @@ export default function Page() {
           setStreak(currentStreak);
           localStorage.setItem('pitchd_streak', currentStreak.toString());
           localStorage.setItem('pitchd_last_played', today);
+
+          // Update Stats
+          const rawStats = localStorage.getItem('pitchd_stats');
+          const stats = rawStats ? JSON.parse(rawStats) : { gamesPlayed: 0, maxStreak: 0, scoreHistory: [] };
+          stats.gamesPlayed += 1;
+          stats.maxStreak = Math.max(stats.maxStreak, currentStreak);
+          stats.scoreHistory.push(exactTotal);
+          localStorage.setItem('pitchd_stats', JSON.stringify(stats));
         }
       }
 
@@ -388,6 +398,18 @@ export default function Page() {
                   </button>
                   <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Rank</span>
                 </div>
+
+                {/* Stats Button */}
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    aria-label="View Stats"
+                    onClick={() => setShowStats(true)}
+                    className="size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
+                  >
+                    <BarChart2 className="size-5" />
+                  </button>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Stats</span>
+                </div>
               </div>
             </div>
           </div>
@@ -523,6 +545,8 @@ export default function Page() {
         )}
 
       </div>
+
+      {showStats && <StatsModal onClose={() => setShowStats(false)} />}
 
       {/* Footer Pill (Home Page Only) */}
       {gameState === 'home' && (

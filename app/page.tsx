@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Script from 'next/script';
+import Link from 'next/link';
 import { Play, Trophy, Calendar, Infinity as InfinityIcon } from 'lucide-react';
 import ParticleField from '@/components/ParticleField';
 import Piano from '@/components/Piano';
@@ -20,6 +21,7 @@ export default function Page() {
   const [currentRound, setCurrentRound] = useState(1);
   const [roundScores, setRoundScores] = useState<number[]>([]);
   const [finalTotal, setFinalTotal] = useState<number | null>(null);
+  const [streak, setStreak] = useState(0);
 
   // Active Round State
   const [correctSequence, setCorrectSequence] = useState<string[]>([]);
@@ -29,6 +31,7 @@ export default function Page() {
   const [initials, setInitials] = useState('');
   const [isPosting, setIsPosting] = useState(false);
   const [isPosted, setIsPosted] = useState(false);
+  const [showError, setShowError] = useState(false);
   const [percentile, setPercentile] = useState<number | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -45,14 +48,17 @@ export default function Page() {
 
     const savedInitials = localStorage.getItem('pitchd_initials');
     if (savedInitials) setInitials(savedInitials);
+
+    const savedStreak = localStorage.getItem('pitchd_streak');
+    if (savedStreak) setStreak(parseInt(savedStreak, 10));
   }, []);
 
   const fetchLeaderboard = async () => {
     try {
       const res = await fetch('/api/leaderboard');
       if (!res.ok) {
-         const errData = await res.json();
-         throw new Error(errData.error || 'Failed to fetch leaderboard');
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to fetch leaderboard');
       }
       const data = await res.json();
       if (data.top_scores) setLeaderboard(data.top_scores);
@@ -78,10 +84,10 @@ export default function Page() {
 
   const startRound = (roundNum: number, mode: 'daily' | 'endless') => {
     setPlayerSequence([]);
-    const sequence = mode === 'daily' 
+    const sequence = mode === 'daily'
       ? getDailySequenceForRound(getDailyDateString(), roundNum)
       : generateRandomSequence();
-      
+
     setCorrectSequence(sequence);
     setGameState('listen');
     playTargetSequence(sequence);
@@ -129,6 +135,27 @@ export default function Page() {
       const exactTotal = Math.round(total * 100) / 100;
       setFinalTotal(exactTotal);
 
+      let currentStreak = streak;
+      if (playMode === 'daily') {
+        const lastPlayed = localStorage.getItem('pitchd_last_played');
+        const today = new Date().toISOString().split('T')[0];
+
+        if (lastPlayed !== today) {
+          const yesterdayDate = new Date();
+          yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+          const yesterday = yesterdayDate.toISOString().split('T')[0];
+
+          if (lastPlayed === yesterday) {
+            currentStreak += 1;
+          } else {
+            currentStreak = 1;
+          }
+          setStreak(currentStreak);
+          localStorage.setItem('pitchd_streak', currentStreak.toString());
+          localStorage.setItem('pitchd_last_played', today);
+        }
+      }
+
       fetch('/api/scores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -147,6 +174,13 @@ export default function Page() {
 
   const postScore = async () => {
     if (isPosting || finalTotal === null) return;
+
+    if (initials.trim().length === 0) {
+      setShowError(true);
+      setTimeout(() => setShowError(false), 500);
+      return;
+    }
+
     setIsPosting(true);
 
     if (initials) {
@@ -165,17 +199,17 @@ export default function Page() {
           initials: initials.toUpperCase() || 'NAN'
         })
       });
-      
+
       if (!res.ok) {
-         const errData = await res.json();
-         throw new Error(errData.error || 'Failed to post score');
+        const errData = await res.json();
+        throw new Error(errData.error || 'Failed to post score');
       }
 
       const data = await res.json();
       if (data.percentile) {
-         setPercentile(data.percentile);
+        setPercentile(data.percentile);
       }
-      
+
       setIsPosting(false);
       setIsPosted(true);
       generateShareText();
@@ -190,21 +224,29 @@ export default function Page() {
     const prefix = playMode === 'daily' ? 'Daily pitchd' : 'pitchd — Endless Mode';
     let text = `${prefix} — ${finalTotal?.toFixed(2)} / 50\n`;
     if (percentile) {
-       text += `Ranked in the Top ${percentile}% 🏆\n\n`;
-    } else {
-       text += `\n`;
+      text += `Ranked in the Top ${percentile}% 🏆\n`;
     }
-    
+    if (playMode === 'daily' && streak > 1) {
+      text += `🔥 ${streak} Day Streak\n`;
+    }
+    text += `\n`;
+
     let emojiRow = '';
     roundScores.forEach(score => {
       if (score >= 9.0) emojiRow += '🟩';
       else if (score >= 6.5) emojiRow += '🟨';
       else emojiRow += '🟥';
     });
-    
+
     text += `${emojiRow}\n\n`;
-    text += `pitchd.app`;
-    
+
+    const params = new URLSearchParams();
+    if (finalTotal !== null) params.set('score', finalTotal.toFixed(2));
+    if (percentile) params.set('percentile', percentile.toString());
+    if (playMode === 'daily' && streak > 1) params.set('streak', streak.toString());
+
+    text += `https://pitchd.net/share?${params.toString()}`;
+
     navigator.clipboard.writeText(text);
     alert('Score Posted & Copied to clipboard!');
   };
@@ -226,7 +268,7 @@ export default function Page() {
   };
 
   return (
-    <main className="relative flex min-h-screen flex-col items-center justify-center p-4 sm:p-8 z-10">
+    <main className="relative flex h-[100dvh] w-full overflow-hidden select-none flex-col items-center justify-center p-4 sm:p-8 z-10">
       <Script
         id="schema-game"
         type="application/ld+json"
@@ -240,7 +282,7 @@ export default function Page() {
             "playMode": "SinglePlayer",
             "applicationCategory": "Game",
             "operatingSystem": "WebBrowser",
-            "url": "https://pitchd.app",
+            "url": "https://pitchd.net",
             "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
           })
         }}
@@ -290,63 +332,63 @@ export default function Page() {
           <div className="flex flex-col items-center justify-center w-full px-4 animate-in fade-in zoom-in-95 duration-1000">
             {/* The Main Card */}
             <div className="w-full max-w-[420px] bg-[#050505] border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-               {/* Internal Glow */}
-               <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.03] rounded-full blur-3xl pointer-events-none transform translate-x-1/3 -translate-y-1/3" />
+              {/* Internal Glow */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.03] rounded-full blur-3xl pointer-events-none transform translate-x-1/3 -translate-y-1/3" />
 
-               <h1 className="text-6xl sm:text-[5rem] font-display text-white mb-6 tracking-tighter relative z-10 leading-none">
-                 pitchd.
-               </h1>
-               
-               <p className="text-[#a0a0a0] text-sm leading-relaxed mb-4 relative z-10 font-sans pr-6">
-                 Most humans don't possess perfect pitch. This is a 5-round acoustic memory game to see exactly how your ears measure up.
-               </p>
-               <p className="text-[#a0a0a0] text-sm leading-relaxed mb-10 relative z-10 font-sans pr-6">
-                 We'll play a randomized sequence of notes. Listen closely, then recreate the melody flawlessly.
-               </p>
+              <h1 className="text-6xl sm:text-[5rem] font-display text-white mb-6 tracking-tighter relative z-10 leading-none">
+                pitchd.
+              </h1>
 
-               <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em] mb-4 block relative z-10">
-                 Game Modes
-               </span>
+              <p className="text-[#a0a0a0] text-sm leading-relaxed mb-4 relative z-10 font-sans pr-6">
+                Most humans don't possess perfect pitch. This is a 5-round acoustic memory game to see exactly how your ears measure up.
+              </p>
+              <p className="text-[#a0a0a0] text-sm leading-relaxed mb-10 relative z-10 font-sans pr-6">
+                We'll play a randomized sequence of notes. Listen closely, then recreate the melody flawlessly.
+              </p>
 
-               <div className="flex items-center gap-4 relative z-10">
-                  {/* Daily Button */}
-                  <div className="flex flex-col items-center gap-2">
-                    <button 
-                      aria-label="Play Daily Mode"
-                      onClick={() => handleStart('daily')}
-                      className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
-                    >
-                      <Calendar className="size-6 mb-0.5" />
-                    </button>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Daily</span>
-                  </div>
+              <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em] mb-4 block relative z-10">
+                Game Modes
+              </span>
 
-                  {/* Endless Button */}
-                  <div className="flex flex-col items-center gap-2">
-                    <button 
-                      aria-label="Play Endless Mode"
-                      onClick={() => handleStart('endless')}
-                      className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-                    >
-                      <InfinityIcon className="size-8 stroke-[1.5]" />
-                    </button>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Endless</span>
-                  </div>
-                  
-                  <div className="h-10 w-px bg-white/10 mx-2" />
+              <div className="flex items-center gap-4 relative z-10">
+                {/* Daily Button */}
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    aria-label="Play Daily Mode"
+                    onClick={() => handleStart('daily')}
+                    className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
+                  >
+                    <Calendar className="size-6 mb-0.5" />
+                  </button>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Daily</span>
+                </div>
 
-                  {/* Leaderboard Button */}
-                  <div className="flex flex-col items-center gap-2">
-                    <button 
-                      aria-label="View Leaderboard"
-                      onClick={fetchLeaderboard}
-                      className="size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
-                    >
-                      <Trophy className="size-5" />
-                    </button>
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Rank</span>
-                  </div>
-               </div>
+                {/* Endless Button */}
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    aria-label="Play Endless Mode"
+                    onClick={() => handleStart('endless')}
+                    className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                  >
+                    <InfinityIcon className="size-8 stroke-[1.5]" />
+                  </button>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Endless</span>
+                </div>
+
+                <div className="h-10 w-px bg-white/10 mx-2" />
+
+                {/* Leaderboard Button */}
+                <div className="flex flex-col items-center gap-2">
+                  <button
+                    aria-label="View Leaderboard"
+                    onClick={fetchLeaderboard}
+                    className="size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
+                  >
+                    <Trophy className="size-5" />
+                  </button>
+                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Rank</span>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -418,7 +460,7 @@ export default function Page() {
         {/* State: RESULTS */}
         {gameState === 'results' && (
           <div className="relative flex flex-col w-full max-w-lg animate-in fade-in slide-in-from-bottom-8 duration-1000">
-            
+
             <div className="flex flex-col items-center text-center">
               <h2 className="text-text-muted text-sm tracking-[0.3em] uppercase mb-4 font-sans">
                 {percentile ? `Top ${percentile}% Today` : 'Performance'}
@@ -443,34 +485,34 @@ export default function Page() {
             </div>
 
             {/* Submit Block */}
-            <div className="flex flex-col sm:flex-row gap-2 w-full mt-12 bg-surface-2 border border-border p-2 rounded-full">
+            <div className={`flex flex-col sm:flex-row gap-2 w-full mt-12 bg-surface-2 border ${showError ? 'border-[var(--color-error)] animate-shake' : 'border-border'} p-2 rounded-full transition-all`}>
               <input
                 autoFocus
                 type="text"
                 placeholder="INT"
                 maxLength={3}
                 value={initials}
-                onChange={(e) => setInitials(e.target.value)}
+                onChange={(e) => { setInitials(e.target.value); setShowError(false); }}
                 onKeyDown={(e) => { if (e.key === 'Enter') postScore(); }}
                 className="w-full sm:w-24 bg-transparent px-6 py-4 text-center text-white font-sans text-lg focus:outline-none placeholder-text-faint uppercase tracking-[0.2em]"
               />
               <button
                 onClick={postScore}
                 disabled={isPosting || isPosted}
-                className="flex-1 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all py-4 disabled:opacity-50 text-xs sm:text-sm"
+                className="flex-1 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all py-4 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm"
               >
                 {isPosting ? 'Posting...' : isPosted ? 'Score Posted' : 'Submit Score'}
               </button>
             </div>
-            
+
             <div className="mt-12 flex flex-col gap-3">
-              <button 
+              <button
                 onClick={() => handleStart('daily')}
                 className="text-text-muted hover:text-white text-xs tracking-[0.2em] uppercase transition-colors text-center w-full"
               >
                 Play Daily Run
               </button>
-              <button 
+              <button
                 onClick={() => handleStart('endless')}
                 className="text-text-muted hover:text-white text-xs tracking-[0.2em] uppercase transition-colors text-center w-full"
               >
@@ -481,6 +523,39 @@ export default function Page() {
         )}
 
       </div>
+
+      {/* Footer Pill (Home Page Only) */}
+      {gameState === 'home' && (
+        <div className="fixed bottom-6 sm:bottom-8 z-50 flex items-center gap-4 sm:gap-6 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-md animate-in slide-in-from-bottom-8 duration-1000 shadow-2xl">
+          <Link href="/articles" className="text-text-muted hover:text-white transition-colors text-[10px] sm:text-xs tracking-widest uppercase">
+            Articles
+          </Link>
+          <div className="w-px h-4 bg-white/10" />
+          <div className="flex items-center gap-3">
+            <span className="text-text-muted text-[10px] sm:text-xs tracking-widest uppercase hidden sm:inline mr-2">By Krish</span>
+            <a href="https://github.com/krishdeshmukhhh" target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-white transition-colors" aria-label="GitHub">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+                <path d="M15 22v-4a4.8 4.8 0 0 0-1-3.2c3-.3 6-1.5 6-6.8 0-1.4-.5-2.8-1.5-3.8.1-.4.6-2-1-4-1 0-3 1.5-3 1.5-1-.3-2-.3-3-.3s-2 .3-3 .3C6 3.5 3 2 3 2c-1.5 2-1 3.6-.9 4-1 1-1.5 2.4-1.5 3.8 0 5.3 3 6.5 6 6.8-.6.5-1 1.4-1 2.8V22"></path>
+                <path d="M9 18c-4.51 2-5-2-7-2"></path>
+              </svg>
+            </a>
+            <a href="https://linkedin.com/in/krish-deshmukh" target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-white transition-colors" aria-label="LinkedIn">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+                <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
+                <rect x="2" y="9" width="4" height="12"></rect>
+                <circle cx="4" cy="4" r="2"></circle>
+              </svg>
+            </a>
+            <a href="https://instagram.com/krishdevlog" target="_blank" rel="noopener noreferrer" className="text-text-muted hover:text-white transition-colors" aria-label="Instagram">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="size-4">
+                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+              </svg>
+            </a>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

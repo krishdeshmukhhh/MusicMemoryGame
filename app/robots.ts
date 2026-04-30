@@ -6,6 +6,6 @@ export default function robots(): MetadataRoute.Robots {
       userAgent: '*',
       allow: '/',
     },
-    sitemap: 'https://pitchd.app/sitemap.xml',
+    sitemap: 'https://pitchd.net/sitemap.xml',
   };
 }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://pitchd.app'),
+  metadataBase: new URL('https://pitchd.net'),
   alternates: {
     canonical: '/',
   },
@@ -18,12 +18,12 @@ export const metadata: Metadata = {
   openGraph: {
     title: "pitchd. | Perfect Pitch Memory Game",
     description: "Listen, memorize, and perfectly recreate the 5-round sequence. Do you have perfect pitch?",
-    url: "https://pitchd.app",
+    url: "https://pitchd.net",
     siteName: "pitchd.",
     locale: "en_US",
     type: "website",
     images: [{
-      url: "https://pitchd.app/og.png",
+      url: "https://pitchd.net/og.png",
       width: 1200,
       height: 630,
       alt: "pitchd. Gameplay Interface"
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     creator: "@pitchd",
     title: "pitchd. | Are your ears perfect?",
     description: "Beat the daily 5-round acoustic memory challenge.",
-    images: ["https://pitchd.app/og.png"],
+    images: ["https://pitchd.net/og.png"],
   },
   robots: {
     index: true,
@@ -49,7 +49,7 @@ export const metadata: Metadata = {
     }
   },
   icons: {
-    icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎵</text></svg>',
+    icon: '/icon.png',
     apple: '/apple-icon.png',
   },
   appleWebApp: {
@@ -70,8 +70,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-[100dvh] antialiased">
-      <body className="h-full flex flex-col overflow-hidden select-none">
+    <html lang="en" className="antialiased">
+      <body className="min-h-screen flex flex-col">
         {children}
         <Analytics />
       </body>

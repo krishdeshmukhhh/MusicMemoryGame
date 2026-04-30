@@ -28,6 +28,7 @@ export default function Page() {
 
   const [initials, setInitials] = useState('');
   const [isPosting, setIsPosting] = useState(false);
+  const [isPosted, setIsPosted] = useState(false);
   const [percentile, setPercentile] = useState<number | null>(null);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -70,6 +71,7 @@ export default function Page() {
     setFinalTotal(null);
     setPercentile(null);
     setIsPosting(false);
+    setIsPosted(false);
     setShowLeaderboard(false);
     startRound(1, mode);
   };
@@ -174,6 +176,8 @@ export default function Page() {
          setPercentile(data.percentile);
       }
       
+      setIsPosting(false);
+      setIsPosted(true);
       generateShareText();
     } catch (e) {
       console.error("Score POST error:", e);
@@ -308,6 +312,7 @@ export default function Page() {
                   {/* Daily Button */}
                   <div className="flex flex-col items-center gap-2">
                     <button 
+                      aria-label="Play Daily Mode"
                       onClick={() => handleStart('daily')}
                       className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
                     >
@@ -319,6 +324,7 @@ export default function Page() {
                   {/* Endless Button */}
                   <div className="flex flex-col items-center gap-2">
                     <button 
+                      aria-label="Play Endless Mode"
                       onClick={() => handleStart('endless')}
                       className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                     >
@@ -332,6 +338,7 @@ export default function Page() {
                   {/* Leaderboard Button */}
                   <div className="flex flex-col items-center gap-2">
                     <button 
+                      aria-label="View Leaderboard"
                       onClick={fetchLeaderboard}
                       className="size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
                     >
@@ -449,10 +456,10 @@ export default function Page() {
               />
               <button
                 onClick={postScore}
-                disabled={isPosting}
+                disabled={isPosting || isPosted}
                 className="flex-1 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all py-4 disabled:opacity-50 text-xs sm:text-sm"
               >
-                {isPosting ? 'Posting...' : 'Submit Score'}
+                {isPosting ? 'Posting...' : isPosted ? 'Score Posted' : 'Submit Score'}
               </button>
             </div>
             

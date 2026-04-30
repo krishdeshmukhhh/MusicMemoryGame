@@ -3,6 +3,9 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://pitchd.app'),
+  alternates: {
+    canonical: '/',
+  },
   title: {
     default: "pitchd. | The Ultimate Perfect Pitch Memory Game",
     template: "%s | pitchd."
@@ -28,6 +31,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
+    site: "@pitchd",
+    creator: "@pitchd",
     title: "pitchd. | Are your ears perfect?",
     description: "Beat the daily 5-round acoustic memory challenge.",
     images: ["https://pitchd.app/og.png"],
@@ -45,6 +50,15 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">🎵</text></svg>',
+    apple: '/apple-icon.png',
+  },
+  appleWebApp: {
+    title: 'pitchd.',
+    statusBarStyle: 'black-translucent',
+    capable: true,
+  },
+  formatDetection: {
+    telephone: false,
   },
 };
 

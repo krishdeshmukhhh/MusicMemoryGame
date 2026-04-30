@@ -53,8 +53,13 @@ export function generateRandomSequence(): string[] {
 
 export function scoreNote(playerNote: string, correctNote: string): number {
   const dist = Math.abs(NOTES.indexOf(playerNote) - NOTES.indexOf(correctNote));
-  // 4 notes per round -> max 10 points per round = 2.5 points per note max.
-  // Use exponential decay to give granular decimal scores based on distance
-  const score = 2.5 * Math.pow(0.8, dist);
-  return score;
+  
+  if (dist === 0) return 2.5;         // Perfect match
+  if (dist === 12) return 2.0;        // Correct note, wrong octave! (Huge music theory win)
+  if (dist === 7) return 1.5;         // Perfect 5th
+  if (dist === 5) return 1.25;        // Perfect 4th
+  if (dist === 1) return 1.0;         // 1 semitone off (fat finger or slightly flat/sharp)
+  
+  // For everything else, harsh decay
+  return Math.max(0, 2.5 * Math.pow(0.5, dist));
 }

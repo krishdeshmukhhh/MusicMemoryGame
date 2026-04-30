@@ -278,7 +278,7 @@ export default function Page() {
   };
 
   return (
-    <main className="relative flex h-[100dvh] w-full overflow-hidden select-none flex-col items-center justify-center p-4 sm:p-8 z-10">
+    <main className="fixed inset-0 flex h-[100dvh] w-full overflow-hidden select-none flex-col items-center justify-center p-4 sm:p-8 z-10 bg-[#050505]">
       <Script
         id="schema-game"
         type="application/ld+json"
@@ -360,17 +360,17 @@ export default function Page() {
                 Game Modes
               </span>
 
-              <div className="flex items-center gap-4 relative z-10">
+              <div className="flex flex-wrap items-center gap-3 sm:gap-4 relative z-10">
                 {/* Daily Button */}
                 <div className="flex flex-col items-center gap-2">
                   <button
                     aria-label="Play Daily Mode"
                     onClick={() => handleStart('daily')}
-                    className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
+                    className="size-14 sm:size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
                   >
-                    <Calendar className="size-6 mb-0.5" />
+                    <Calendar className="size-5 sm:size-6 mb-0.5" />
                   </button>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Daily</span>
+                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Daily</span>
                 </div>
 
                 {/* Endless Button */}
@@ -378,25 +378,25 @@ export default function Page() {
                   <button
                     aria-label="Play Endless Mode"
                     onClick={() => handleStart('endless')}
-                    className="size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                    className="size-14 sm:size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
                   >
-                    <InfinityIcon className="size-8 stroke-[1.5]" />
+                    <InfinityIcon className="size-6 sm:size-8 stroke-[1.5]" />
                   </button>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Endless</span>
+                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Endless</span>
                 </div>
 
-                <div className="h-10 w-px bg-white/10 mx-2" />
+                <div className="h-8 sm:h-10 w-px bg-white/10 mx-1 sm:mx-2 hidden sm:block" />
 
                 {/* Leaderboard Button */}
                 <div className="flex flex-col items-center gap-2">
                   <button
                     aria-label="View Leaderboard"
                     onClick={fetchLeaderboard}
-                    className="size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
+                    className="size-14 sm:size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
                   >
-                    <Trophy className="size-5" />
+                    <Trophy className="size-4 sm:size-5" />
                   </button>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Rank</span>
+                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Rank</span>
                 </div>
 
                 {/* Stats Button */}
@@ -404,11 +404,11 @@ export default function Page() {
                   <button
                     aria-label="View Stats"
                     onClick={() => setShowStats(true)}
-                    className="size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
+                    className="size-14 sm:size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
                   >
-                    <BarChart2 className="size-5" />
+                    <BarChart2 className="size-4 sm:size-5" />
                   </button>
-                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#666]">Stats</span>
+                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Stats</span>
                 </div>
               </div>
             </div>

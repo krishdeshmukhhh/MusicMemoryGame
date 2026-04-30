@@ -47,11 +47,11 @@ export default function ArticlesPage() {
               href={`/articles/${article.slug}`}
               className="p-8 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
             >
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-2xl font-display text-white group-hover:text-purple-400 transition-colors">
+              <div className="flex flex-col gap-2 mb-4">
+                <span className="text-text-muted text-[10px] font-sans tracking-[0.2em] uppercase">{article.date}</span>
+                <h2 className="text-2xl font-display text-white group-hover:text-purple-400 transition-colors leading-tight">
                   {article.title}
                 </h2>
-                <span className="text-text-muted text-sm font-sans tracking-widest">{article.date}</span>
               </div>
               <p className="text-[#a0a0a0] leading-relaxed">
                 {article.description}

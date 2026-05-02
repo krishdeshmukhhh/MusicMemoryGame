@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Script from 'next/script';
 import Link from 'next/link';
-import { Play, Trophy, Calendar, Infinity as InfinityIcon, BarChart2 } from 'lucide-react';
+import { Play, Trophy, Calendar, Infinity as InfinityIcon, BarChart2, X, ArrowLeft, BookOpen, Music } from 'lucide-react';
 import ParticleField from '@/components/ParticleField';
 import Piano from '@/components/Piano';
 import ScoreReveal from '@/components/ScoreReveal';
-import StatsModal from '@/components/StatsModal';
 import { engine } from '@/lib/audio';
 import { generateRandomSequence, getDailySequenceForRound, getDailyDateString } from '@/lib/seed';
 
@@ -34,11 +33,65 @@ export default function Page() {
   const [isPosted, setIsPosted] = useState(false);
   const [showError, setShowError] = useState(false);
   const [percentile, setPercentile] = useState<number | null>(null);
-  const [showLeaderboard, setShowLeaderboard] = useState(false);
-  const [showStats, setShowStats] = useState(false);
+  const [homeView, setHomeView] = useState<'menu' | 'stats' | 'articles' | 'scoring' | 'rank'>('menu');
+  const [viewFading, setViewFading] = useState(false);
+  const [cardHeight, setCardHeight] = useState<number | undefined>(undefined);
+  const cardInnerRef = useRef<HTMLDivElement>(null);
+
+  const switchView = useCallback((target: typeof homeView) => {
+    if (target === homeView) return;
+    setViewFading(true);
+    setTimeout(() => {
+      setHomeView(target);
+      setViewFading(false);
+    }, 250);
+  }, [homeView]);
+
+
+  const ARTICLES_DATA = [
+    {
+      slug: 'perfect-pitch-vs-relative-pitch',
+      title: 'Perfect Pitch vs. Relative Pitch: What is the difference?',
+      description: 'A deep dive into absolute pitch recognition versus interval training, and how to test yourself.',
+      date: '2026-04-30',
+    },
+    {
+      slug: 'how-to-train-your-ears',
+      title: 'The Ultimate Guide to Ear Training',
+      description: 'Can you actually learn perfect pitch as an adult? We look at the science and the best daily routines.',
+      date: '2026-04-28',
+    },
+  ];
+
+  const SCORING_DATA = [
+    { name: 'Perfect Match', desc: 'You correctly identified the exact note and octave.', pts: '2.50', badge: 'bg-green-500/20 text-green-400' },
+    { name: 'Perfect Octave', desc: 'Correct note, wrong octave. A huge music theory win.', pts: '2.00', badge: 'bg-blue-500/20 text-blue-400' },
+    { name: 'Perfect 5th', desc: 'The dominant 5th — the most consonant interval.', pts: '1.50', badge: 'bg-purple-500/20 text-purple-400' },
+    { name: 'Perfect 4th', desc: 'You hit the subdominant interval.', pts: '1.25', badge: 'bg-teal-500/20 text-teal-400' },
+    { name: 'Adjacent Note', desc: '1 semitone off. Fat finger or slightly flat/sharp.', pts: '1.00', badge: 'bg-yellow-500/20 text-yellow-400' },
+  ];
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
+  const [globalStats, setGlobalStats] = useState<{games: number, notes: number} | null>(null);
+  const [localStats, setLocalStats] = useState<{gamesPlayed: number, maxStreak: number, scoreHistory: number[]} | null>(null);
 
   const [activeNoteIdx, setActiveNoteIdx] = useState<number | null>(null);
+
+  // Measure card content height on every view change for smooth transitions
+  useEffect(() => {
+    if (!cardInnerRef.current) return;
+    const measure = () => {
+      const el = cardInnerRef.current;
+      if (el) setCardHeight(el.scrollHeight);
+    };
+    // Measure after the new view has rendered
+    const raf = requestAnimationFrame(measure);
+    // Also re-measure when images/fonts finish loading
+    const timer = setTimeout(measure, 350);
+    return () => {
+      cancelAnimationFrame(raf);
+      clearTimeout(timer);
+    };
+  }, [homeView, leaderboard, localStats, globalStats]);
 
   useEffect(() => {
     let storedId = localStorage.getItem('pitchd_device_id');
@@ -53,9 +106,22 @@ export default function Page() {
 
     const savedStreak = localStorage.getItem('pitchd_streak');
     if (savedStreak) setStreak(parseInt(savedStreak, 10));
+
+    const rawStats = localStorage.getItem('pitchd_stats');
+    if (rawStats) {
+      setLocalStats(JSON.parse(rawStats));
+    } else {
+      setLocalStats({ gamesPlayed: 0, maxStreak: 0, scoreHistory: [] });
+    }
+
+    fetch('/api/stats/global')
+      .then(r => r.json())
+      .then(data => setGlobalStats(data))
+      .catch(() => {});
   }, []);
 
   const fetchLeaderboard = async () => {
+    switchView('rank');
     try {
       const res = await fetch('/api/leaderboard');
       if (!res.ok) {
@@ -64,10 +130,8 @@ export default function Page() {
       }
       const data = await res.json();
       if (data.top_scores) setLeaderboard(data.top_scores);
-      setShowLeaderboard(true);
     } catch (e) {
       console.error("Leaderboard fetch error:", e);
-      alert(`Database Error: ${e instanceof Error ? e.message : 'Is your Supabase SQL deployed?'}`);
     }
   };
 
@@ -80,7 +144,7 @@ export default function Page() {
     setPercentile(null);
     setIsPosting(false);
     setIsPosted(false);
-    setShowLeaderboard(false);
+
     startRound(1, mode);
   };
 
@@ -300,38 +364,9 @@ export default function Page() {
       <ParticleField state={gameState} />
 
       {/* Round Indicator Header */}
-      {gameState !== 'home' && gameState !== 'results' && !showLeaderboard && (
+      {gameState !== 'home' && gameState !== 'results' && (
         <div className="absolute top-8 left-8 text-white font-display tracking-widest uppercase opacity-60">
           Round {currentRound} <span className="text-text-muted">/ 5</span>
-        </div>
-      )}
-
-      {/* Leaderboard Overlay */}
-      {showLeaderboard && (
-        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md bg-black/80 backdrop-blur-xl border border-white/10 rounded-3xl p-8 shadow-2xl animate-in zoom-in-95 duration-300">
-            <div className="flex justify-between items-center mb-8 pb-4 border-b border-white/10">
-              <h2 className="text-2xl font-display text-white tracking-widest uppercase">Global Rank</h2>
-              <button onClick={() => setShowLeaderboard(false)} className="text-text-muted hover:text-white transition-colors">
-                <svg width="20" height="20" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M1 1L13 13M1 13L13 1" strokeLinecap="round" /></svg>
-              </button>
-            </div>
-            <div className="flex flex-col gap-3 max-h-[60vh] overflow-y-auto">
-              {leaderboard.length === 0 ? (
-                <p className="text-text-muted text-center py-8">No scores yet. Be the first!</p>
-              ) : (
-                leaderboard.map((entry, idx) => (
-                  <div key={idx} className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <span className="text-white/50 font-display w-6 text-xl">{idx + 1}</span>
-                      <span className="text-white font-bold tracking-widest">{entry.initials || 'ANON'}</span>
-                    </div>
-                    <span className="text-white font-display text-2xl">{Number(entry.score).toFixed(2)}</span>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
         </div>
       )}
 
@@ -341,76 +376,242 @@ export default function Page() {
         {gameState === 'home' && (
           <div className="flex flex-col items-center justify-center w-full px-4 animate-in fade-in zoom-in-95 duration-1000">
             {/* The Main Card */}
-            <div className="w-full max-w-[420px] bg-[#050505] border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+            <div
+              className={`w-full bg-[#050505] border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden transition-[max-width,height] duration-500 ease-in-out ${homeView === 'menu' || homeView === 'stats' || homeView === 'rank' ? 'max-w-[420px]' : 'max-w-[520px]'}`}
+              style={cardHeight !== undefined ? { height: cardHeight + 64 } : undefined}
+            >
               {/* Internal Glow */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.03] rounded-full blur-3xl pointer-events-none transform translate-x-1/3 -translate-y-1/3" />
 
-              <h1 className="text-6xl sm:text-[5rem] font-display text-white mb-6 tracking-tighter relative z-10 leading-none">
-                pitchd.
-              </h1>
+              <div ref={cardInnerRef}>
+              {/* ── MENU VIEW ── */}
+              {homeView === 'menu' && (
+                <div key="menu" className="card-view-enter relative z-10 w-full h-full">
+                  <h1 className="text-6xl sm:text-[5rem] font-display text-white mb-6 tracking-tighter leading-none">
+                    pitchd.
+                  </h1>
 
-              <p className="text-[#a0a0a0] text-sm leading-relaxed mb-4 relative z-10 font-sans pr-6">
-                Most humans don't possess perfect pitch. This is a 5-round acoustic memory game to see exactly how your ears measure up.
-              </p>
-              <p className="text-[#a0a0a0] text-sm leading-relaxed mb-10 relative z-10 font-sans pr-6">
-                We'll play a randomized sequence of notes. Listen closely, then recreate the melody flawlessly.
-              </p>
+                  <p className="text-[#a0a0a0] text-sm leading-relaxed mb-4 font-sans pr-6">
+                    Most humans don't possess perfect pitch. This is a 5-round acoustic memory game to see exactly how your ears measure up.
+                  </p>
+                  <p className="text-[#a0a0a0] text-sm leading-relaxed mb-10 font-sans pr-6">
+                    We'll play a randomized sequence of notes. Listen closely, then recreate the melody flawlessly.
+                  </p>
 
-              <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em] mb-4 block relative z-10">
-                Game Modes
-              </span>
+                  <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em] mb-4 block">
+                    Game Modes
+                  </span>
 
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 relative z-10">
-                {/* Daily Button */}
-                <div className="flex flex-col items-center gap-2">
-                  <button
-                    aria-label="Play Daily Mode"
-                    onClick={() => handleStart('daily')}
-                    className="size-14 sm:size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
-                  >
-                    <Calendar className="size-5 sm:size-6 mb-0.5" />
-                  </button>
-                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Daily</span>
+                  <div className="flex flex-wrap items-center gap-3 sm:gap-4">
+                    {/* Daily Button */}
+                    <div className="flex flex-col items-center gap-2">
+                      <button
+                        aria-label="Play Daily Mode"
+                        onClick={() => handleStart('daily')}
+                        className="size-14 sm:size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
+                      >
+                        <Calendar className="size-5 sm:size-6 mb-0.5" />
+                      </button>
+                      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Daily</span>
+                    </div>
+
+                    {/* Endless Button */}
+                    <div className="flex flex-col items-center gap-2">
+                      <button
+                        aria-label="Play Endless Mode"
+                        onClick={() => handleStart('endless')}
+                        className="size-14 sm:size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
+                      >
+                        <InfinityIcon className="size-6 sm:size-8 stroke-[1.5]" />
+                      </button>
+                      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Endless</span>
+                    </div>
+
+                    <div className="h-8 sm:h-10 w-px bg-white/10 mx-1 sm:mx-2 hidden sm:block" />
+
+                    {/* Leaderboard Button */}
+                    <div className="flex flex-col items-center gap-2">
+                      <button
+                        aria-label="View Leaderboard"
+                        onClick={fetchLeaderboard}
+                        className="size-14 sm:size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
+                      >
+                        <Trophy className="size-4 sm:size-5" />
+                      </button>
+                      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Rank</span>
+                    </div>
+
+                    {/* Stats Button */}
+                    <div className="flex flex-col items-center gap-2">
+                      <button
+                        aria-label="View Stats"
+                        onClick={() => switchView('stats')}
+                        className="size-14 sm:size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
+                      >
+                        <BarChart2 className="size-4 sm:size-5" />
+                      </button>
+                      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Stats</span>
+                    </div>
+                  </div>
+
+                  {globalStats && (
+                    <div className="mt-8 pt-6 border-t border-white/5 flex flex-col items-start w-full stats-enter">
+                      <div className="flex items-center gap-3 mb-1.5">
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                        </span>
+                        <span className="text-white font-sans text-xs tracking-wide">{globalStats.games.toLocaleString()}</span>
+                        <span className="text-[#666] font-sans text-xs">games played worldwide</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="relative flex h-2 w-2 bg-transparent"></span>
+                        <span className="text-white font-sans text-xs tracking-wide">{globalStats.notes.toLocaleString()}</span>
+                        <span className="text-[#666] font-sans text-xs">notes perfectly pitched</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
+              )}
 
-                {/* Endless Button */}
-                <div className="flex flex-col items-center gap-2">
-                  <button
-                    aria-label="Play Endless Mode"
-                    onClick={() => handleStart('endless')}
-                    className="size-14 sm:size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-                  >
-                    <InfinityIcon className="size-6 sm:size-8 stroke-[1.5]" />
-                  </button>
-                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Endless</span>
+              {/* ── STATS VIEW ── */}
+              {homeView === 'stats' && (
+                <div key="stats" className="card-view-enter relative z-10 w-full h-full flex flex-col">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-2xl font-display text-white tracking-tighter uppercase">Your Stats</h2>
+                    <button onClick={() => switchView('menu')} className="text-text-muted hover:text-white transition-colors" aria-label="Back to Menu">
+                      <X className="size-5" />
+                    </button>
+                  </div>
+                  
+                  {localStats && (
+                    <>
+                      <div className="grid grid-cols-3 gap-2 mb-10">
+                        <div className="flex flex-col items-center">
+                          <span className="text-4xl font-display text-white leading-none mb-1">{localStats.gamesPlayed}</span>
+                          <span className="text-[10px] text-text-muted uppercase tracking-widest text-center">Played</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-4xl font-display text-white leading-none mb-1">{streak}</span>
+                          <span className="text-[10px] text-text-muted uppercase tracking-widest text-center">Current<br/>Streak</span>
+                        </div>
+                        <div className="flex flex-col items-center">
+                          <span className="text-4xl font-display text-white leading-none mb-1">{localStats.maxStreak}</span>
+                          <span className="text-[10px] text-text-muted uppercase tracking-widest text-center">Max<br/>Streak</span>
+                        </div>
+                      </div>
+
+                      <h3 className="text-[10px] text-text-muted uppercase tracking-[0.2em] mb-4 text-center">Score History (Last 10)</h3>
+                      {localStats.scoreHistory.length > 0 ? (
+                        <div className="flex items-end justify-center gap-2 h-32 border-b border-white/10 pb-2 relative w-full mt-auto">
+                          {localStats.scoreHistory.slice(-10).map((score, i) => {
+                            const heightPct = Math.max(10, (score / 50) * 100);
+                            return (
+                              <div key={i} className="flex flex-col items-center justify-end w-8 group">
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-white/50 mb-1 absolute -top-4">{Math.round(score)}</div>
+                                <div 
+                                  className="w-full bg-white/20 group-hover:bg-purple-500/80 transition-colors rounded-t-sm"
+                                  style={{ height: `${heightPct}%` }}
+                                />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center h-32 text-text-muted text-xs uppercase tracking-widest border-b border-white/10 pb-2 mt-auto">
+                          No games played yet
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
+              )}
 
-                <div className="h-8 sm:h-10 w-px bg-white/10 mx-1 sm:mx-2 hidden sm:block" />
-
-                {/* Leaderboard Button */}
-                <div className="flex flex-col items-center gap-2">
-                  <button
-                    aria-label="View Leaderboard"
-                    onClick={fetchLeaderboard}
-                    className="size-14 sm:size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
-                  >
-                    <Trophy className="size-4 sm:size-5" />
-                  </button>
-                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Rank</span>
+              {/* ── RANK VIEW ── */}
+              {homeView === 'rank' && (
+                <div key="rank" className="card-view-enter relative z-10">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-2xl font-display text-white tracking-tighter uppercase">Global Rank</h2>
+                    <button onClick={() => switchView('menu')} className="text-text-muted hover:text-white transition-colors"><X className="size-5" /></button>
+                  </div>
+                  <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto hide-scrollbar">
+                    {leaderboard.length === 0 ? (
+                      <p className="text-text-muted text-center py-8 text-sm">Loading...</p>
+                    ) : (
+                      leaderboard.map((entry, idx) => (
+                        <div key={idx} className="flex justify-between items-center p-4 rounded-xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
+                          <div className="flex items-center gap-4">
+                            <span className="text-white/50 font-display w-6 text-xl">{idx + 1}</span>
+                            <span className="text-white font-bold tracking-widest">{entry.initials || 'ANON'}</span>
+                          </div>
+                          <span className="text-white font-display text-2xl">{Number(entry.score).toFixed(2)}</span>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
+              )}
 
-                {/* Stats Button */}
-                <div className="flex flex-col items-center gap-2">
-                  <button
-                    aria-label="View Stats"
-                    onClick={() => setShowStats(true)}
-                    className="size-14 sm:size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
-                  >
-                    <BarChart2 className="size-4 sm:size-5" />
+              {/* ── ARTICLES VIEW ── */}
+              {homeView === 'articles' && (
+                <div key="articles" className="card-view-enter relative z-10 w-full">
+                  <button onClick={() => switchView('menu')} className="flex items-center gap-2 text-text-muted hover:text-white transition-colors text-xs uppercase tracking-widest mb-8">
+                    <ArrowLeft className="size-3.5" /> Back
                   </button>
-                  <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Stats</span>
+                  <h2 className="text-3xl sm:text-4xl font-display text-white mb-2 tracking-tighter leading-tight">
+                    Ear Training Guides
+                  </h2>
+                  <p className="text-text-muted text-sm mb-8">Articles on music theory, pitch recognition, and auditory memory.</p>
+                  <div className="flex flex-col gap-4">
+                    {ARTICLES_DATA.map((article) => (
+                      <Link
+                        key={article.slug}
+                        href={`/articles/${article.slug}`}
+                        className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                      >
+                        <span className="text-text-muted text-[10px] font-sans tracking-[0.2em] uppercase">{article.date}</span>
+                        <h3 className="text-lg font-display text-white group-hover:text-purple-400 transition-colors leading-tight mt-1.5 mb-2">
+                          {article.title}
+                        </h3>
+                        <p className="text-[#a0a0a0] text-sm leading-relaxed">{article.description}</p>
+                      </Link>
+                    ))}
+                  </div>
                 </div>
+              )}
+
+              {/* ── SCORING VIEW ── */}
+              {homeView === 'scoring' && (
+                <div key="scoring" className="card-view-enter relative z-10 w-full">
+                  <button onClick={() => switchView('menu')} className="flex items-center gap-2 text-text-muted hover:text-white transition-colors text-xs uppercase tracking-widest mb-8">
+                    <ArrowLeft className="size-3.5" /> Back
+                  </button>
+                  <h2 className="text-3xl sm:text-4xl font-display text-white mb-2 tracking-tighter leading-tight">
+                    How Scoring Works
+                  </h2>
+                  <p className="text-[#a0a0a0] text-sm leading-relaxed mb-8">
+                    pitchd. uses a harmonic scoring engine based on music theory. You're rewarded for identifying correct harmonic relationships.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    {SCORING_DATA.map((item) => (
+                      <div key={item.name} className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-white font-display text-base mb-0.5">{item.name}</h3>
+                          <p className="text-[11px] text-text-muted leading-relaxed">{item.desc}</p>
+                        </div>
+                        <div className={`px-3 py-1.5 ${item.badge} font-bold font-mono text-sm rounded-lg shrink-0`}>
+                          {item.pts}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-8 pt-6 border-t border-white/5">
+                    <p className="text-[#666] text-xs text-center">A perfect 5-round game yields exactly <span className="text-white font-bold">50 points</span>.</p>
+                  </div>
+                </div>
+              )}
               </div>
+
             </div>
           </div>
         )}
@@ -546,14 +747,16 @@ export default function Page() {
 
       </div>
 
-      {showStats && <StatsModal onClose={() => setShowStats(false)} />}
-
       {/* Footer Pill (Home Page Only) */}
       {gameState === 'home' && (
         <div className="fixed bottom-6 sm:bottom-8 z-50 flex items-center gap-4 sm:gap-6 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-md animate-in slide-in-from-bottom-8 duration-1000 shadow-2xl">
-          <Link href="/articles" className="text-text-muted hover:text-white transition-colors text-[10px] sm:text-xs tracking-widest uppercase">
+          <button onClick={() => switchView('articles')} className="text-text-muted hover:text-white transition-colors text-[10px] sm:text-xs tracking-widest uppercase">
             Articles
-          </Link>
+          </button>
+          <div className="w-px h-3 bg-white/10" />
+          <button onClick={() => switchView('scoring')} className="text-text-muted hover:text-white transition-colors text-[10px] sm:text-xs tracking-widest uppercase">
+            Scoring
+          </button>
           <div className="w-px h-4 bg-white/10" />
           <div className="flex items-center gap-3">
             <span className="text-text-muted text-[10px] sm:text-xs tracking-widest uppercase hidden sm:inline mr-2">By Krish</span>

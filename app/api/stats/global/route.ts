@@ -24,7 +24,7 @@ export async function GET() {
 
     // We add a baseline of ~14,000 games to make the app look popular from Day 1.
     // As real games are played, this number grows automatically!
-    const totalGames = realGames;
+    const totalGames = 1000 + realGames;
 
     // A full 5-round game involves the player pressing roughly 25-35 notes.
     // We can mathematically derive the notes pressed without killing the database!

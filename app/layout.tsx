@@ -60,6 +60,9 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+  other: {
+    'theme-color': '#000000',
+  },
 };
 
 import { Analytics } from "@vercel/analytics/next"

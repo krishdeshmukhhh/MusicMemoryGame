@@ -7,6 +7,17 @@ export const metadata: Metadata = {
   alternates: {
     canonical: 'https://pitchd.net/articles',
   },
+  openGraph: {
+    title: 'Ear Training Guides | pitchd.',
+    description: 'Master your relative pitch, learn how to test for perfect pitch, and train your ears with our comprehensive guides.',
+    url: 'https://pitchd.net/articles',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: 'Ear Training Guides | pitchd.',
+    description: 'Articles on music theory, pitch recognition, and auditory memory.',
+  },
 };
 
 const ARTICLES = [

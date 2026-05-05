@@ -37,14 +37,19 @@ export default function GameClient() {
   const [cardHeight, setCardHeight] = useState<number | undefined>(undefined);
   const cardInnerRef = useRef<HTMLDivElement>(null);
 
+  const VIEW_URL: Record<string, string> = { menu: '/', articles: '/articles', scoring: '/scoring', stats: '/', rank: '/' };
+
   const switchView = useCallback((target: typeof homeView) => {
     if (target === homeView) return;
+    const nextUrl = VIEW_URL[target] ?? '/';
+    const currUrl = VIEW_URL[homeView] ?? '/';
+    if (nextUrl !== currUrl) history.pushState(null, '', nextUrl);
     setViewFading(true);
     setTimeout(() => {
       setHomeView(target);
       setViewFading(false);
     }, 250);
-  }, [homeView]);
+  }, [homeView]); // eslint-disable-line react-hooks/exhaustive-deps
 
 
   const ARTICLES_DATA = [
@@ -141,6 +146,23 @@ export default function GameClient() {
       .then(r => r.json())
       .then(data => setGlobalStats(data))
       .catch(() => {});
+  }, []);
+
+  // Sync card view when user presses browser back/forward
+  useEffect(() => {
+    const onPop = () => {
+      const path = window.location.pathname;
+      const view: typeof homeView =
+        path === '/articles' ? 'articles' :
+        path === '/scoring'  ? 'scoring'  : 'menu';
+      setViewFading(true);
+      setTimeout(() => {
+        setHomeView(view);
+        setViewFading(false);
+      }, 250);
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
   }, []);
 
   const fetchLeaderboard = async () => {

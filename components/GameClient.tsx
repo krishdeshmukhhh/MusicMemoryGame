@@ -49,6 +49,30 @@ export default function GameClient() {
 
   const ARTICLES_DATA = [
     {
+      slug: 'wordle-for-musicians',
+      title: 'The Best Wordle-Like Games for Musicians',
+      description: 'Love Wordle? These daily music puzzle games give you the same satisfying loop — but for your ears.',
+      date: '2026-05-03',
+    },
+    {
+      slug: 'how-to-get-perfect-pitch-as-an-adult',
+      title: 'Can You Get Perfect Pitch as an Adult?',
+      description: 'The honest answer about learning absolute pitch after childhood — and what you can realistically achieve.',
+      date: '2026-05-04',
+    },
+    {
+      slug: 'best-ear-training-games-online',
+      title: 'The Best Free Ear Training Games Online (2026)',
+      description: 'A ranked list of the best free ear training games on the web — from daily pitch puzzles to interval drills.',
+      date: '2026-05-01',
+    },
+    {
+      slug: 'interval-recognition-training',
+      title: "Interval Recognition Training: The Complete Beginner's Guide",
+      description: 'Learn to identify all 12 musical intervals by ear using the song association method.',
+      date: '2026-05-02',
+    },
+    {
       slug: 'perfect-pitch-vs-relative-pitch',
       title: 'Perfect Pitch vs. Relative Pitch: What is the difference?',
       description: 'A deep dive into absolute pitch recognition versus interval training, and how to test yourself.',
@@ -543,7 +567,7 @@ export default function GameClient() {
                     Ear Training Guides
                   </h2>
                   <p className="text-text-muted text-sm mb-8">Articles on music theory, pitch recognition, and auditory memory.</p>
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-4 max-h-[50vh] overflow-y-auto hide-scrollbar">
                     {ARTICLES_DATA.map((article) => (
                       <Link
                         key={article.slug}

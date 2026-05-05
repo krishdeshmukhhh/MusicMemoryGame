@@ -18,10 +18,12 @@ export const metadata: Metadata = {
 export default function ScoringPage() {
   return (
     <main className="min-h-screen w-full flex flex-col items-center p-8 z-10 relative">
-      <div className="w-full max-w-3xl mt-12 sm:mt-24 bg-surface-2 p-8 sm:p-16 rounded-3xl border border-border shadow-2xl relative overflow-hidden">
-        
+      <div className="w-full max-w-3xl mt-12 sm:mt-24 bg-surface-2 p-8 sm:p-16 rounded-3xl border border-border shadow-2xl relative">
+
         {/* Decorative Glow */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl pointer-events-none transform translate-x-1/3 -translate-y-1/3" />
+        <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-green-500/10 rounded-full blur-3xl transform translate-x-1/3 -translate-y-1/3" />
+        </div>
 
         <Link href="/" className="text-text-muted hover:text-white transition-colors text-sm uppercase tracking-widest mb-12 inline-block relative z-10">
           ← Back to Game

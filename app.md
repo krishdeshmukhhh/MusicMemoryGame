@@ -203,12 +203,6 @@ Env vars: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
 ## Known Issues / Quirks
 
-1. **Double score POST (bug):** `handleRevealComplete` fires a background POST to `/api/scores` with `initials: 'NAN'` as soon as a game ends. Then `postScore` fires a second POST when the user clicks Submit. The API handles this via upsert (only keeps higher score), but it logs two `game_sessions` rows per game. Should remove the auto-POST from `handleRevealComplete`.
+1. **BPM best score not shown:** Saved to `localStorage('bpm_best')` but never read in UI. The `useBpmGame` hook saves it on game end but the final screen doesn't display it.
 
-2. **`alert()` calls:** Three blocking browser dialogs — "Score Posted & Copied", "Copied!" (BPM share), and error messages. Should be replaced with a toast component.
-
-3. **BPM best score not shown:** Saved to `localStorage('bpm_best')` but never read in UI.
-
-4. **BPM articles are stubs:** `BPM_ARTICLES_DATA` in GameClient.tsx renders as plain `<div>` elements with no links. No actual pages exist at `/bpm/articles/[slug]` unlike pitch articles.
-
-5. **`AppShell.tsx` and `BpmGame.tsx` are orphaned** — these files exist but are no longer imported anywhere. Safe to delete.
+2. **`AppShell.tsx` and `BpmGame.tsx` are orphaned** — these files exist but are no longer imported anywhere. Safe to delete.

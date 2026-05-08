@@ -69,6 +69,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.7,
     },
     {
+      url: 'https://pitchd.net/bpm/articles/how-to-train-your-tempo-ear',
+      lastModified: new Date('2026-05-05'),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: 'https://pitchd.net/bpm/articles/science-of-groove',
+      lastModified: new Date('2026-05-06'),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: 'https://pitchd.net/bpm/articles/metronome-practice-internal-clock',
+      lastModified: new Date('2026-05-07'),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
       url: 'https://pitchd.net/bpm/scoring',
       lastModified: new Date(),
       changeFrequency: 'monthly',

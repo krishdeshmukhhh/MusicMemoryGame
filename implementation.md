@@ -6,22 +6,15 @@
 
 ## 🐛 Bugs to Fix
 
-### Double score POST (Priority: High)
-**Where:** `GameClient.tsx → handleRevealComplete()` (line ~314)  
-**Problem:** When a 5-round pitch game ends, `handleRevealComplete` fires a POST to `/api/scores` automatically with `initials: 'NAN'`. Then `postScore` fires a second POST when the user clicks Submit. Two `game_sessions` rows logged per game.  
-**Fix:** Remove the fire-and-forget `fetch('/api/scores', ...)` inside `handleRevealComplete`. Let `postScore` be the only submission path.
+### ✅ Double score POST (Priority: High)
+Removed the fire-and-forget `fetch('/api/scores', ...)` from `handleRevealComplete`. `postScore` is now the only submission path.
 
 ---
 
 ## 🎨 UX / Polish
 
-### Replace `alert()` with toast notifications (Priority: High)
-**Where:** `GameClient.tsx` — 3 instances:
-- Line ~373: submission error
-- Line ~406: "Score Posted & Copied to clipboard!"
-- Line ~845: "Copied!" (BPM share button)
-
-**Approach:** Create a small `useToast` hook + `<Toast>` component (fixed bottom-centre, auto-dismiss after 2.5s, slide-up animation). No external library needed — ~40 lines.
+### ✅ Replace `alert()` with toast notifications (Priority: High)
+Created `components/Toast.tsx` — module-level `showToast()` function, fixed bottom-centre pill, auto-dismisses after 2.8s, slide-up animation. Replaced all 3 `alert()` calls in GameClient.
 
 ---
 
@@ -40,15 +33,8 @@
 
 ## 🆕 Features
 
-### Real BPM article pages (Priority: High — SEO gap)
-**Where:** `app/bpm/articles/[slug]/page.tsx` (new file), `components/GameClient.tsx`  
-**Problem:** `BPM_ARTICLES_DATA` in GameClient renders as plain `<div>` elements — no links, no pages. The pitch side has 6 full articles at `/articles/[slug]`. BPM articles are stubs.  
-**3 articles to write:**
-1. "How to Train Your Tempo Ear" (`how-to-train-your-tempo-ear`)
-2. "The Science of Groove: Why Tempo Perception Varies" (`science-of-groove`)
-3. "Metronome Practice: Building a Reliable Internal Clock" (`metronome-practice-internal-clock`)
-
-**Approach:** Mirror the pitch article architecture — `ARTICLES` record in `app/bpm/articles/[slug]/page.tsx`, `generateStaticParams`, `generateMetadata`, `Article` + `BreadcrumbList` JSON-LD, same card UI. Convert `BPM_ARTICLES_DATA` items in GameClient from `<div>` to `<Link href="/bpm/articles/[slug]">`.
+### ✅ Real BPM article pages (Priority: High — SEO gap)
+Created `app/bpm/articles/[slug]/page.tsx` with all 3 full articles (6 sections each), `generateStaticParams`, `generateMetadata`, `Article` + `BreadcrumbList` JSON-LD. Converted `BPM_ARTICLES_DATA` in GameClient from plain `<div>` to `<Link>` with hover styles. Added all 3 slugs to sitemap. Also fixed TypeScript build error (`item.range` on type `never` in BPM scoring view).
 
 ---
 
@@ -105,3 +91,8 @@
 - ✅ SEO: BPM routes added to sitemap with correct priorities
 - ✅ SEO: Keywords expanded to cover BPM/rhythm terms sitewide
 - ✅ SEO: Improved titles, descriptions, OG/Twitter tags across all pages
+- ✅ Bug fix: removed double score POST from `handleRevealComplete`
+- ✅ Toast notifications (`components/Toast.tsx`) replacing all `alert()` calls
+- ✅ Real BPM articles at `/bpm/articles/[slug]` — 3 full articles with JSON-LD
+- ✅ BPM article cards in GameClient converted from `<div>` to `<Link>`
+- ✅ TypeScript build error fixed (`item.range` unreachable on never type)

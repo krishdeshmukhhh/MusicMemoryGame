@@ -6,6 +6,7 @@ import { Play, Trophy, Calendar, Infinity as InfinityIcon, BarChart2, X, ArrowLe
 import ParticleField from '@/components/ParticleField';
 import Piano from '@/components/Piano';
 import ScoreReveal from '@/components/ScoreReveal';
+import ToastContainer, { showToast } from '@/components/Toast';
 import { engine } from '@/lib/audio';
 import { generateRandomSequence, getDailySequenceForRound, getDailyDateString } from '@/lib/seed';
 import { useBpmGame } from '@/hooks/useBpmGame';
@@ -117,9 +118,9 @@ export default function GameClient() {
   ];
 
   const BPM_ARTICLES_DATA = [
-    { title: 'How to Train Your Tempo Ear', description: 'Internalize BPM and beat recognition with techniques used by professional drummers and producers.', date: '2026-05-05' },
-    { title: 'The Science of Groove: Why Tempo Perception Varies', description: 'Explore why some people naturally feel BPM better and what neuroscience tells us about rhythmic entrainment.', date: '2026-05-06' },
-    { title: 'Metronome Practice: Building a Reliable Internal Clock', description: 'Most musicians use the metronome wrong. Here\'s how to use it to develop an internal sense of tempo that lasts.', date: '2026-05-07' },
+    { slug: 'how-to-train-your-tempo-ear', title: 'How to Train Your Tempo Ear', description: 'Internalize BPM and beat recognition with techniques used by professional drummers and producers.', date: '2026-05-05' },
+    { slug: 'science-of-groove', title: 'The Science of Groove: Why Tempo Perception Varies', description: 'Explore why some people naturally feel BPM better and what neuroscience tells us about rhythmic entrainment.', date: '2026-05-06' },
+    { slug: 'metronome-practice-internal-clock', title: 'Metronome Practice: Building a Reliable Internal Clock', description: "Most musicians use the metronome wrong. Here's how to use it to develop an internal sense of tempo that lasts.", date: '2026-05-07' },
   ];
 
   const BPM_SCORING_DATA = BPM_SCORING_DATA_UPDATED;
@@ -311,18 +312,6 @@ export default function GameClient() {
         }
       }
 
-      fetch('/api/scores', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          device_id: deviceId,
-          date_str: new Date().toISOString().split('T')[0],
-          score: Math.round(exactTotal),
-          player_sequence: playerSequence,
-          initials: initials.toUpperCase() || 'NAN'
-        })
-      }).catch(e => console.error(e));
-
       setTimeout(() => setGameState('results'), 1000);
     }
   }, [currentRound, deviceId, playerSequence, roundScores, initials]);
@@ -370,7 +359,7 @@ export default function GameClient() {
       generateShareText();
     } catch (e) {
       console.error("Score POST error:", e);
-      alert(`Submission Failed: ${e instanceof Error ? e.message : 'Database error'}. Ensure schema.sql has been migrated properly in Supabase.`);
+      showToast('Submission failed — try again', 'error');
       setIsPosting(false);
     }
   };
@@ -403,7 +392,7 @@ export default function GameClient() {
     text += `https://pitchd.net/share?${params.toString()}`;
 
     navigator.clipboard.writeText(text);
-    alert('Score Posted & Copied to clipboard!');
+    showToast('Score copied to clipboard!');
   };
 
   const COLORS = [
@@ -842,7 +831,7 @@ export default function GameClient() {
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => { const total = bpmResults.reduce((s,r)=>s+r.points,0).toFixed(2); const t = `bpm. — ${total} / 20.00\n${bpmResults.map(r=>r.emoji).join('')}\n\nhttps://pitchd.net`; navigator.clipboard.writeText(t).catch(()=>{}); alert('Copied!'); }}
+                          onClick={() => { const total = bpmResults.reduce((s,r)=>s+r.points,0).toFixed(2); const t = `bpm. — ${total} / 20.00\n${bpmResults.map(r=>r.emoji).join('')}\n\nhttps://pitchd.net`; navigator.clipboard.writeText(t).catch(()=>{}); showToast('Copied!'); }}
                           className="flex-1 py-3 rounded-full border border-border text-white hover:bg-white hover:text-black transition-all tracking-widest uppercase text-xs"
                         >Share</button>
                         <button onClick={resetBpmGame} className="flex-1 py-3 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-xs">
@@ -863,12 +852,16 @@ export default function GameClient() {
                   <h2 className="text-3xl sm:text-4xl font-display text-white mb-2 tracking-tighter leading-tight">Rhythm & BPM Guides</h2>
                   <p className="text-text-muted text-sm mb-8">Articles on tempo training, beat recognition, and rhythmic ear development.</p>
                   <div className="flex flex-col gap-4">
-                    {BPM_ARTICLES_DATA.map((article, i) => (
-                      <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                    {BPM_ARTICLES_DATA.map((article) => (
+                      <Link
+                        key={article.slug}
+                        href={`/bpm/articles/${article.slug}`}
+                        className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                      >
                         <span className="text-text-muted text-[10px] font-sans tracking-[0.2em] uppercase">{article.date}</span>
-                        <h3 className="text-lg font-display text-white leading-tight mt-1.5 mb-2">{article.title}</h3>
+                        <h3 className="text-lg font-display text-white group-hover:text-orange-400 transition-colors leading-tight mt-1.5 mb-2">{article.title}</h3>
                         <p className="text-[#a0a0a0] text-sm leading-relaxed">{article.description}</p>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
@@ -889,7 +882,7 @@ export default function GameClient() {
                       <div key={item.label} className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between gap-4">
                         <div>
                           <h3 className="text-white font-display text-base mb-0.5">{item.label}</h3>
-                          <p className="text-[11px] text-text-muted leading-relaxed">{'desc' in item ? item.desc : item.range}</p>
+                          <p className="text-[11px] text-text-muted leading-relaxed">{item.desc}</p>
                         </div>
                         <div className={`px-3 py-1.5 ${item.badge} font-bold font-mono text-sm rounded-lg shrink-0`}>{item.pts} pts</div>
                       </div>
@@ -1055,6 +1048,8 @@ export default function GameClient() {
           </button>
         </div>
       )}
+
+      <ToastContainer />
 
       {/* Footer Pill (Home Page Only) */}
       {gameState === 'home' && (

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { Play, Trophy, Calendar, Infinity as InfinityIcon, BarChart2, X, ArrowLeft, BookOpen, Music } from 'lucide-react';
+import { Play, Trophy, BarChart2, X, ArrowLeft, BookOpen, Music } from 'lucide-react';
 import ParticleField from '@/components/ParticleField';
 import Piano from '@/components/Piano';
 import ScoreReveal from '@/components/ScoreReveal';
@@ -37,7 +37,13 @@ export default function GameClient() {
   const [showError, setShowError] = useState(false);
   const [percentile, setPercentile] = useState<number | null>(null);
   const [activeArticleSlug, setActiveArticleSlug] = useState<string | null>(null);
-  const [homeView, setHomeView] = useState<'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring' | 'article' | 'bpm-article'>(() => {
+  const [selectedPitchMode, setSelectedPitchMode] = useState<'daily' | 'endless'>('daily');
+  const [selectedBpmMode, setSelectedBpmMode] = useState<'practice' | 'daily'>('practice');
+  const [tapInputMode, setTapInputMode] = useState<'slider' | 'tap'>('slider');
+  const [tapTimes, setTapTimes] = useState<number[]>([]);
+  const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showKeymap, setShowKeymap] = useState(false);
+  const [homeView, setHomeView] = useState<'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring' | 'bpm-stats' | 'article' | 'bpm-article'>(() => {
     if (typeof window === 'undefined') return 'menu';
     const p = window.location.pathname;
     if (p === '/bpm')           return 'bpm-home';
@@ -68,11 +74,12 @@ export default function GameClient() {
   const {
     phase: bpmPhase, round: bpmRound, countdown: bpmCountdown,
     sliderBpm, setSliderBpm, results: bpmResults, pulseKey: bpmPulseKey,
-    sliderMin, sliderMax, bpmGamesPlayed, bpmBest,
+    sliderMin, sliderMax, bpmGamesPlayed, bpmBest, bpmScoreHistory, bpmStreak, bpmDailyPlayed,
+    hasReplayed, isReplaying, isNewBpmBest, replayTempo,
     startGame: startBpmGame, submitGuess: submitBpmGuess, nextRound: nextBpmRound, resetGame: resetBpmGame,
   } = useBpmGame();
 
-  const VIEW_URL: Record<string, string> = { menu: '/', articles: '/articles', scoring: '/scoring', stats: '/', rank: '/', 'bpm-home': '/bpm', 'bpm-articles': '/bpm/articles', 'bpm-scoring': '/bpm/scoring' };
+  const VIEW_URL: Record<string, string> = { menu: '/', articles: '/articles', scoring: '/scoring', stats: '/', rank: '/', 'bpm-home': '/bpm', 'bpm-articles': '/bpm/articles', 'bpm-scoring': '/bpm/scoring', 'bpm-stats': '/bpm' };
 
   const switchView = useCallback((target: typeof homeView) => {
     if (target === homeView) return;
@@ -136,11 +143,11 @@ export default function GameClient() {
   ];
 
   const BPM_SCORING_DATA_UPDATED = [
-    { range: '≤ 1.5% off', label: 'Perfect', pts: '4.00', badge: 'bg-green-500/20 text-green-400',  desc: 'Score: 4.00 → 3.00. Dead on — your internal clock is elite.' },
-    { range: '≤ 4% off',   label: 'Great',   pts: '3.00', badge: 'bg-yellow-500/20 text-yellow-400', desc: 'Score: 3.00 → 2.00. Very close — a trained ear.' },
-    { range: '≤ 8% off',   label: 'Good',    pts: '2.00', badge: 'bg-orange-500/20 text-orange-400', desc: 'Score: 2.00 → 1.00. In the ballpark — keep practicing.' },
-    { range: '≤ 15% off',  label: 'Close',   pts: '1.00', badge: 'bg-stone-500/20 text-stone-400',   desc: 'Score: 1.00 → 0.00. Audible difference, but you felt the groove.' },
-    { range: '> 15% off',  label: 'Miss',    pts: '0.00', badge: 'bg-red-500/20 text-red-400',       desc: 'Score: 0.00. Too far off — listen for the pulse.' },
+    { range: '≤ 3% off',  label: 'Perfect', pts: '4.00', badge: 'bg-green-500/20 text-green-400',   desc: 'Score: 4.00 → 3.00. Dead on — your internal clock is elite.' },
+    { range: '≤ 8% off',  label: 'Great',   pts: '3.00', badge: 'bg-yellow-500/20 text-yellow-400', desc: 'Score: 3.00 → 2.00. Very close — a trained ear.' },
+    { range: '≤ 15% off', label: 'Good',    pts: '2.00', badge: 'bg-orange-500/20 text-orange-400', desc: 'Score: 2.00 → 1.00. In the ballpark — keep practicing.' },
+    { range: '≤ 25% off', label: 'Close',   pts: '1.00', badge: 'bg-stone-500/20 text-stone-400',   desc: 'Score: 1.00 → 0.00. Audible difference, but you felt the groove.' },
+    { range: '> 25% off', label: 'Miss',    pts: '0.00', badge: 'bg-red-500/20 text-red-400',       desc: 'Score: 0.00. Too far off — listen for the pulse.' },
   ];
 
   const BPM_ARTICLES_DATA = [
@@ -180,7 +187,7 @@ export default function GameClient() {
       cancelAnimationFrame(raf);
       clearTimeout(timer);
     };
-  }, [homeView, leaderboard, localStats, globalStats, bpmGlobalStats, bpmPhase]);
+  }, [homeView, leaderboard, localStats, globalStats, bpmGlobalStats, bpmPhase, bpmScoreHistory]);
 
   useEffect(() => {
     let storedId = localStorage.getItem('pitchd_device_id');
@@ -490,72 +497,48 @@ export default function GameClient() {
               {/* ── MENU VIEW ── */}
               {homeView === 'menu' && (
                 <div key="menu" className="card-view-enter relative z-10 w-full h-full">
-                  <h1 className="text-6xl sm:text-[5rem] font-display text-white mb-6 tracking-tighter leading-none">
-                    pitchd.
-                  </h1>
+                  <div className="flex items-center justify-between mb-6">
+                    <h1 className="text-6xl sm:text-[5rem] font-display text-white tracking-tighter leading-none">
+                      pitchd.
+                    </h1>
+                    <div className="flex items-center gap-2">
+                      <button onClick={fetchLeaderboard} className="text-text-muted hover:text-white transition-colors" aria-label="Leaderboard">
+                        <Trophy className="size-4" />
+                      </button>
+                      <button onClick={() => switchView('stats')} className="text-text-muted hover:text-white transition-colors" aria-label="Stats">
+                        <BarChart2 className="size-4" />
+                      </button>
+                    </div>
+                  </div>
 
                   <p className="text-[#a0a0a0] text-sm leading-relaxed mb-4 font-sans pr-6">
                     Most humans don't possess perfect pitch. This is a 5-round acoustic memory game to see exactly how your ears measure up.
                   </p>
-                  <p className="text-[#a0a0a0] text-sm leading-relaxed mb-10 font-sans pr-6">
+                  <p className="text-[#a0a0a0] text-sm leading-relaxed mb-6 font-sans pr-6">
                     We'll play a randomized sequence of notes. Listen closely, then recreate the melody flawlessly.
                   </p>
 
-                  <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em] mb-4 block">
-                    Game Modes
-                  </span>
-
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-                    {/* Daily Button */}
-                    <div className="flex flex-col items-center gap-2">
-                      <button
-                        aria-label="Play Daily Mode"
-                        onClick={() => handleStart('daily')}
-                        className="size-14 sm:size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)] animate-pulse"
-                      >
-                        <Calendar className="size-5 sm:size-6 mb-0.5" />
-                      </button>
-                      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Daily</span>
-                    </div>
-
-                    {/* Endless Button */}
-                    <div className="flex flex-col items-center gap-2">
-                      <button
-                        aria-label="Play Endless Mode"
-                        onClick={() => handleStart('endless')}
-                        className="size-14 sm:size-16 rounded-full bg-white text-black flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_20px_rgba(255,255,255,0.2)]"
-                      >
-                        <InfinityIcon className="size-6 sm:size-8 stroke-[1.5]" />
-                      </button>
-                      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Endless</span>
-                    </div>
-
-                    <div className="h-8 sm:h-10 w-px bg-white/10 mx-1 sm:mx-2 hidden sm:block" />
-
-                    {/* Leaderboard Button */}
-                    <div className="flex flex-col items-center gap-2">
-                      <button
-                        aria-label="View Leaderboard"
-                        onClick={fetchLeaderboard}
-                        className="size-14 sm:size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
-                      >
-                        <Trophy className="size-4 sm:size-5" />
-                      </button>
-                      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Rank</span>
-                    </div>
-
-                    {/* Stats Button */}
-                    <div className="flex flex-col items-center gap-2">
-                      <button
-                        aria-label="View Stats"
-                        onClick={() => switchView('stats')}
-                        className="size-14 sm:size-16 rounded-full border border-white/20 bg-transparent text-white flex items-center justify-center hover:bg-white/10 transition-colors"
-                      >
-                        <BarChart2 className="size-4 sm:size-5" />
-                      </button>
-                      <span className="text-[9px] sm:text-[10px] uppercase tracking-[0.2em] text-[#666]">Stats</span>
-                    </div>
+                  <div className="relative flex w-fit p-1 rounded-full bg-white/5 border border-white/10 mb-6">
+                    <div
+                      className="absolute top-1 bottom-1 rounded-full bg-white shadow-sm pointer-events-none transition-transform duration-200 ease-in-out"
+                      style={{ left: '4px', width: 'calc(50% - 4px)', transform: selectedPitchMode === 'endless' ? 'translateX(100%)' : 'translateX(0)' }}
+                    />
+                    <button
+                      onClick={() => setSelectedPitchMode('daily')}
+                      className={`relative z-10 min-w-[80px] px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${selectedPitchMode === 'daily' ? 'text-black' : 'text-text-muted hover:text-white'}`}
+                    >Daily {streak > 0 ? `🔥${streak}` : ''}</button>
+                    <button
+                      onClick={() => setSelectedPitchMode('endless')}
+                      className={`relative z-10 min-w-[80px] px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${selectedPitchMode === 'endless' ? 'text-black' : 'text-text-muted hover:text-white'}`}
+                    >Endless</button>
                   </div>
+
+                  <button
+                    onClick={() => handleStart(selectedPitchMode)}
+                    className="w-full py-4 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm"
+                  >
+                    Start {selectedPitchMode === 'daily' ? 'Daily' : 'Game'}
+                  </button>
 
                   {globalStats && (
                     <div className="mt-8 pt-6 border-t border-white/5 flex flex-col items-start w-full stats-enter">
@@ -722,19 +705,45 @@ export default function GameClient() {
                     <div className="flex flex-col">
                       <div className="flex items-center justify-between mb-6">
                         <h1 className="text-6xl sm:text-[5rem] font-display text-white tracking-tighter leading-none">bpm.</h1>
-                        <button onClick={() => switchView('menu')} className="text-text-muted hover:text-white transition-colors" aria-label="Back"><X className="size-5" /></button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => switchView('bpm-stats')} className="text-text-muted hover:text-white transition-colors" aria-label="BPM Stats"><BarChart2 className="size-4" /></button>
+                          <button onClick={() => switchView('menu')} className="text-text-muted hover:text-white transition-colors" aria-label="Back"><X className="size-5" /></button>
+                        </div>
                       </div>
                       <p className="text-[#a0a0a0] text-sm leading-relaxed mb-4 font-sans pr-6">
-                        A metronome plays at a mystery tempo for a few seconds. Listen carefully, then drag the slider to match the BPM you heard.
+                        A metronome plays at a mystery tempo for a few seconds. Listen carefully, then match the BPM you heard.
                       </p>
-                      <p className="text-[#a0a0a0] text-sm leading-relaxed mb-10 font-sans pr-6">
-                        Difficulty is revealed after each round. 5 rounds — max 20 points.
+                      <p className="text-[#a0a0a0] text-sm leading-relaxed mb-6 font-sans pr-6">
+                        5 rounds — max 20 points.
                       </p>
-                      <button onClick={startBpmGame} className="w-full py-4 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm">
-                        Start Game
-                      </button>
 
-                      {(bpmGlobalStats || bpmGamesPlayed > 0 || bpmBest > 0) && (
+                      {/* Mode toggle */}
+                      <div className="relative flex w-fit p-1 rounded-full bg-white/5 border border-white/10 mb-6">
+                        <div
+                          className="absolute top-1 bottom-1 rounded-full bg-white shadow-sm pointer-events-none transition-transform duration-200 ease-in-out"
+                          style={{ left: '4px', width: 'calc(50% - 4px)', transform: selectedBpmMode === 'practice' ? 'translateX(100%)' : 'translateX(0)' }}
+                        />
+                        <button
+                          onClick={() => setSelectedBpmMode('daily')}
+                          className={`relative z-10 min-w-[80px] px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${selectedBpmMode === 'daily' ? 'text-black' : 'text-text-muted hover:text-white'}`}
+                        >Daily {bpmStreak > 0 ? `🔥${bpmStreak}` : ''}</button>
+                        <button
+                          onClick={() => setSelectedBpmMode('practice')}
+                          className={`relative z-10 min-w-[80px] px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${selectedBpmMode === 'practice' ? 'text-black' : 'text-text-muted hover:text-white'}`}
+                        >Practice</button>
+                      </div>
+
+                      {selectedBpmMode === 'daily' && bpmDailyPlayed ? (
+                        <div className="w-full py-4 rounded-full border border-white/10 text-center text-text-muted text-xs tracking-widest uppercase">
+                          Today&apos;s challenge complete — come back tomorrow
+                        </div>
+                      ) : (
+                        <button onClick={() => startBpmGame(selectedBpmMode)} className="w-full py-4 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm">
+                          Start {selectedBpmMode === 'daily' ? 'Daily' : 'Game'}
+                        </button>
+                      )}
+
+                      {(bpmGlobalStats || bpmBest > 0) && (
                         <div className="mt-8 pt-6 border-t border-white/5 flex flex-col items-start w-full stats-enter">
                           {bpmGlobalStats && (
                             <div className="flex items-center gap-3 mb-1.5">
@@ -781,33 +790,89 @@ export default function GameClient() {
 
                   {/* BPM — Guessing */}
                   {bpmPhase === 'guessing' && (
-                    <div className="flex flex-col items-center gap-8">
+                    <div className="flex flex-col items-center gap-6">
                       <div className="text-center w-full">
                         <span className="text-[10px] uppercase tracking-[0.2em] text-text-muted block mb-2">What was the BPM?</span>
                         <span className="text-[6rem] leading-none font-display text-white tracking-tighter tabular-nums">{sliderBpm}</span>
                         <p className="text-[10px] text-text-muted uppercase tracking-[0.2em] mt-1">BPM</p>
                       </div>
-                      <div className="w-full flex flex-col gap-2">
-                        <input
-                          type="range"
-                          min={sliderMin}
-                          max={sliderMax}
-                          step={1}
-                          value={sliderBpm}
-                          onChange={e => setSliderBpm(Number(e.target.value))}
-                          className="w-full accent-white h-1 cursor-pointer"
+
+                      {/* Slider / Tap tabs */}
+                      <div className="relative flex w-fit mx-auto p-1 rounded-full bg-white/5 border border-white/10">
+                        <div
+                          className="absolute top-1 bottom-1 rounded-full bg-white shadow-sm pointer-events-none transition-transform duration-200 ease-in-out"
+                          style={{ left: '4px', width: 'calc(50% - 4px)', transform: tapInputMode === 'tap' ? 'translateX(100%)' : 'translateX(0)' }}
                         />
-                        <div className="flex justify-between">
-                          <span className="text-text-faint text-[10px]">{sliderMin}</span>
-                          <span className="text-text-faint text-[10px]">{sliderMax}</span>
-                        </div>
+                        <button
+                          onClick={() => setTapInputMode('slider')}
+                          className={`relative z-10 flex-1 px-3 py-1 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${tapInputMode === 'slider' ? 'text-black' : 'text-text-muted hover:text-white'}`}
+                        >Slider</button>
+                        <button
+                          onClick={() => { setTapInputMode('tap'); setTapTimes([]); }}
+                          className={`relative z-10 flex-1 px-3 py-1 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${tapInputMode === 'tap' ? 'text-black' : 'text-text-muted hover:text-white'}`}
+                        >Tap</button>
                       </div>
-                      <button
-                        onClick={() => submitBpmGuess(sliderBpm)}
-                        className="w-full py-4 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm"
-                      >
-                        Lock In
-                      </button>
+
+                      {tapInputMode === 'slider' ? (
+                        <div className="w-full flex flex-col gap-2">
+                          <input
+                            type="range"
+                            min={sliderMin}
+                            max={sliderMax}
+                            step={1}
+                            value={sliderBpm}
+                            onChange={e => setSliderBpm(Number(e.target.value))}
+                            disabled={isReplaying}
+                            className="w-full accent-white h-1 cursor-pointer disabled:opacity-40"
+                          />
+                          <div className="flex justify-between">
+                            <span className="text-text-faint text-[10px]">{sliderMin}</span>
+                            <span className="text-text-faint text-[10px]">{sliderMax}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="w-full flex flex-col items-center gap-3">
+                          <button
+                            onPointerDown={() => {
+                              const now = Date.now();
+                              setTapTimes(prev => {
+                                const updated = [...prev, now];
+                                if (updated.length >= 2) {
+                                  const diffs = updated.slice(1).map((t, i) => t - updated[i]);
+                                  const avg = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+                                  const calc = Math.round(60000 / avg);
+                                  setSliderBpm(Math.max(sliderMin, Math.min(sliderMax, calc)));
+                                }
+                                return updated;
+                              });
+                              if (tapResetTimerRef.current) clearTimeout(tapResetTimerRef.current);
+                              tapResetTimerRef.current = setTimeout(() => setTapTimes([]), 2000);
+                            }}
+                            className="w-full py-8 rounded-2xl border-2 border-white/20 hover:border-white/50 active:bg-white/10 transition-all text-white font-display text-lg tracking-widest uppercase select-none"
+                          >
+                            {tapTimes.length === 0 ? 'Tap to the beat' : tapTimes.length === 1 ? 'Keep tapping…' : `${tapTimes.length} taps`}
+                          </button>
+                          {tapTimes.length > 0 && (
+                            <button onClick={() => setTapTimes([])} className="text-text-muted text-[10px] uppercase tracking-widest hover:text-white transition-colors">Reset</button>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex gap-2 w-full">
+                        <button
+                          onClick={replayTempo}
+                          disabled={hasReplayed || isReplaying}
+                          className="flex-1 py-3 rounded-full border border-white/20 text-white text-xs tracking-widest uppercase hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                        >
+                          {isReplaying ? 'Playing…' : hasReplayed ? 'Replayed' : 'Replay (1×)'}
+                        </button>
+                        <button
+                          onClick={() => submitBpmGuess(sliderBpm)}
+                          className="flex-1 py-3 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm"
+                        >
+                          Lock In
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -873,6 +938,12 @@ export default function GameClient() {
                           <span className="text-2xl text-text-faint font-display">/ 20.00</span>
                         </div>
                         <p className="text-text-muted text-xs tracking-[0.3em] mt-2">{bpmResults.map(r => r.emoji).join('')}</p>
+                        {isNewBpmBest && (
+                          <p className="text-orange-400 text-xs tracking-widest uppercase mt-2 font-bold">🎉 New Personal Best!</p>
+                        )}
+                        {bpmStreak > 1 && (
+                          <p className="text-text-muted text-xs tracking-widest mt-1">🔥 {bpmStreak} day streak</p>
+                        )}
                       </div>
                       <div className="grid grid-cols-5 gap-px bg-border p-px overflow-hidden rounded-sm">
                         {bpmResults.map((r, i) => (
@@ -947,6 +1018,50 @@ export default function GameClient() {
                   <div className="mt-8 pt-6 border-t border-white/5">
                     <p className="text-[#666] text-xs text-center">A perfect 5-round BPM game yields exactly <span className="text-white font-bold">20 points</span>.</p>
                   </div>
+                </div>
+              )}
+
+              {/* ── BPM STATS ── */}
+              {homeView === 'bpm-stats' && (
+                <div key="bpm-stats" className="card-view-enter relative z-10 w-full flex flex-col">
+                  <div className="flex items-center justify-between mb-8">
+                    <h2 className="text-2xl font-display text-white tracking-tighter uppercase">BPM Stats</h2>
+                    <button onClick={() => switchView('bpm-home')} className="text-text-muted hover:text-white transition-colors"><X className="size-5" /></button>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-2 mb-10">
+                    <div className="flex flex-col items-center">
+                      <span className="text-4xl font-display text-white leading-none mb-1">{bpmGamesPlayed}</span>
+                      <span className="text-[10px] text-text-muted uppercase tracking-widest text-center">Played</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-4xl font-display text-white leading-none mb-1">{bpmBest > 0 ? bpmBest.toFixed(1) : '—'}</span>
+                      <span className="text-[10px] text-text-muted uppercase tracking-widest text-center">Best</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <span className="text-4xl font-display text-white leading-none mb-1">{bpmStreak}</span>
+                      <span className="text-[10px] text-text-muted uppercase tracking-widest text-center">Daily<br/>Streak</span>
+                    </div>
+                  </div>
+
+                  <h3 className="text-[10px] text-text-muted uppercase tracking-[0.2em] mb-4 text-center">Score History (Last 10)</h3>
+                  {bpmScoreHistory.length > 0 ? (
+                    <div className="flex items-end justify-center gap-2 h-32 border-b border-white/10 pb-2 relative w-full mt-auto">
+                      {bpmScoreHistory.slice(-10).map((score, i) => {
+                        const heightPct = Math.max(10, (score / 20) * 100);
+                        return (
+                          <div key={i} className="flex flex-col items-center justify-end w-8 group">
+                            <div className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-white/50 mb-1 absolute -top-4">{score.toFixed(1)}</div>
+                            <div className="w-full bg-white/20 group-hover:bg-orange-500/80 transition-colors rounded-t-sm" style={{ height: `${heightPct}%` }} />
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-32 text-text-muted text-xs uppercase tracking-widest border-b border-white/10 pb-2 mt-auto">
+                      No games played yet
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1059,13 +1174,32 @@ export default function GameClient() {
                   />
                 ))}
               </div>
-              <button
-                onClick={undoNote}
-                disabled={playerSequence.length === 0}
-                className="text-text-muted hover:text-white disabled:opacity-30 disabled:hover:text-text-muted text-sm tracking-widest uppercase"
-              >
-                Undo
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="relative hidden sm:block">
+                  <button
+                    onMouseEnter={() => setShowKeymap(true)}
+                    onMouseLeave={() => setShowKeymap(false)}
+                    className="text-text-muted hover:text-white transition-colors"
+                    aria-label="Keyboard shortcuts"
+                  >
+                    <Music className="size-4" />
+                  </button>
+                  {showKeymap && (
+                    <div className="absolute bottom-8 right-0 bg-[#111] border border-white/10 rounded-xl p-3 text-[10px] text-text-muted font-mono whitespace-nowrap z-50 shadow-2xl">
+                      <div className="text-white/50 uppercase tracking-widest mb-2 text-[9px]">Keyboard</div>
+                      <div>a w s e d f t g y h u j k o l p ;</div>
+                      <div className="text-white/30 mt-1">C  D♭ D E♭ E F G♭ G A♭ A B♭ B C D♭ D E♭ E</div>
+                    </div>
+                  )}
+                </div>
+                <button
+                  onClick={undoNote}
+                  disabled={playerSequence.length === 0}
+                  className="text-text-muted hover:text-white disabled:opacity-30 disabled:hover:text-text-muted text-sm tracking-widest uppercase"
+                >
+                  Undo
+                </button>
+              </div>
             </div>
             <div className="w-full">
               <Piano onNoteSelected={handleNoteSelected} />

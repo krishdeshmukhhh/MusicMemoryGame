@@ -42,6 +42,14 @@ export function getDailySequenceForRound(dateStr: string, round: number): string
   return sequence;
 }
 
+export function getDailyBpmSequence(dateStr: string, allBpms: number[]): number[] {
+  return Array.from({ length: 5 }, (_, i) => {
+    const seed = stringToSeed(`${dateStr}-bpm-R${i + 1}`);
+    const random = mulberry32(seed);
+    return allBpms[Math.floor(random() * allBpms.length)];
+  });
+}
+
 export function generateRandomSequence(): string[] {
   const sequence: string[] = [];
   for (let i = 0; i < 4; i++) {

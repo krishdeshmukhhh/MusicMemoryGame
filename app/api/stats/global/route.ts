@@ -22,13 +22,13 @@ export async function GET() {
 
     const realGames = count || 0;
 
-    // We add a baseline of ~14,000 games to make the app look popular from Day 1.
+    // We add a baseline of ~1000 games to make the app look popular from Day 1.
     // As real games are played, this number grows automatically!
     const totalGames = 1000 + realGames;
 
     // A full 5-round game involves the player pressing roughly 25-35 notes.
     // We can mathematically derive the notes pressed without killing the database!
-    const totalNotes = totalGames * 18;
+    const totalNotes = totalGames * 20;
 
     return NextResponse.json({ games: totalGames, notes: totalNotes }, {
       headers: {

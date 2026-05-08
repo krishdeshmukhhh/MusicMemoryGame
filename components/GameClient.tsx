@@ -241,6 +241,11 @@ export default function GameClient() {
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  // Reset BPM game when navigating away from the BPM view
+  useEffect(() => {
+    if (homeView !== 'bpm-home') resetBpmGame();
+  }, [homeView]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-submit BPM session to Supabase when a game ends
   useEffect(() => {
     if (bpmPhase !== 'final' || bpmResults.length < 5) return;
@@ -1286,27 +1291,29 @@ export default function GameClient() {
       </div>
 
       {/* Top Mode Switcher (Home Page Only) */}
-      {gameState === 'home' && (
-        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-1.5 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-lg animate-in slide-in-from-top-4 duration-700">
-          <button
-            onClick={() => switchView('menu')}
-            className={`px-5 py-2 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${!homeView.startsWith('bpm') ? 'bg-white text-black shadow-sm' : 'text-text-muted hover:text-white'}`}
-          >
-            Pitch
-          </button>
-          <button
-            onClick={() => switchView('bpm-home')}
-            className={`px-5 py-2 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${homeView.startsWith('bpm') ? 'bg-white text-black shadow-sm' : 'text-text-muted hover:text-white'}`}
-          >
-            BPM
-          </button>
+      {gameState === 'home' && (homeView !== 'bpm-home' || bpmPhase === 'idle') && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top-4 duration-700">
+          <div className="relative flex p-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-lg">
+            <div
+              className="absolute top-1.5 bottom-1.5 rounded-full bg-white shadow-sm pointer-events-none transition-transform duration-200 ease-in-out"
+              style={{ left: '6px', width: 'calc(50% - 6px)', transform: homeView.startsWith('bpm') ? 'translateX(100%)' : 'translateX(0)' }}
+            />
+            <button
+              onClick={() => switchView('menu')}
+              className={`relative z-10 w-[64px] py-2 text-[10px] uppercase tracking-[0.2em] font-bold text-center transition-colors duration-150 ${!homeView.startsWith('bpm') ? 'text-black' : 'text-text-muted hover:text-white'}`}
+            >Pitch</button>
+            <button
+              onClick={() => switchView('bpm-home')}
+              className={`relative z-10 w-[64px] py-2 text-[10px] uppercase tracking-[0.2em] font-bold text-center transition-colors duration-150 ${homeView.startsWith('bpm') ? 'text-black' : 'text-text-muted hover:text-white'}`}
+            >BPM</button>
+          </div>
         </div>
       )}
 
       <ToastContainer />
 
       {/* Footer Pill (Home Page Only) */}
-      {gameState === 'home' && (
+      {gameState === 'home' && (homeView !== 'bpm-home' || bpmPhase === 'idle') && (
         <div className="fixed bottom-6 sm:bottom-8 z-50 flex items-center gap-4 sm:gap-6 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-md animate-in slide-in-from-bottom-8 duration-1000 shadow-2xl">
           <button
             onClick={() => switchView(homeView.startsWith('bpm') ? 'bpm-articles' : 'articles')}

@@ -276,7 +276,7 @@ export function useBpmGame() {
     } catch { /* localStorage unavailable */ }
   }, []);
 
-  // ── Tab-switch: stop metronome, skip to guessing if mid-listen ────────────
+  // ── Tab-switch: mute audio, skip to guessing if mid-listen ──────────────
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') {

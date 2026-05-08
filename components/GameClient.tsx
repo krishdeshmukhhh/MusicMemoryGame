@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Play, Trophy, Calendar, Infinity as InfinityIcon, BarChart2, X, ArrowLeft, BookOpen, Music } from 'lucide-react';
 import ParticleField from '@/components/ParticleField';
 import Piano from '@/components/Piano';
@@ -10,6 +10,8 @@ import ToastContainer, { showToast } from '@/components/Toast';
 import { engine } from '@/lib/audio';
 import { generateRandomSequence, getDailySequenceForRound, getDailyDateString } from '@/lib/seed';
 import { useBpmGame } from '@/hooks/useBpmGame';
+import { PITCH_ARTICLES } from '@/lib/pitch-articles';
+import { BPM_ARTICLES } from '@/lib/bpm-articles';
 
 type GameState = 'home' | 'listen' | 'play' | 'reveal' | 'results';
 type LeaderboardEntry = { initials: string, score: number, device_id: string, created_at: string };
@@ -34,7 +36,8 @@ export default function GameClient() {
   const [isPosted, setIsPosted] = useState(false);
   const [showError, setShowError] = useState(false);
   const [percentile, setPercentile] = useState<number | null>(null);
-  const [homeView, setHomeView] = useState<'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring'>(() => {
+  const [activeArticleSlug, setActiveArticleSlug] = useState<string | null>(null);
+  const [homeView, setHomeView] = useState<'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring' | 'article' | 'bpm-article'>(() => {
     if (typeof window === 'undefined') return 'menu';
     const p = window.location.pathname;
     if (p === '/bpm')           return 'bpm-home';
@@ -45,13 +48,27 @@ export default function GameClient() {
     return 'menu';
   });
   const [viewFading, setViewFading] = useState(false);
+
+  // usePathname triggers on real Next.js navigations (not our pushState calls).
+  // This syncs homeView when the router navigates to a GameClient route from
+  // outside (e.g. pressing Back from an article page).
+  const pathname = usePathname();
+  useEffect(() => {
+    const view =
+      pathname === '/bpm'          ? 'bpm-home'     :
+      pathname === '/bpm/articles' ? 'bpm-articles' :
+      pathname === '/bpm/scoring'  ? 'bpm-scoring'  :
+      pathname === '/articles'     ? 'articles'     :
+      pathname === '/scoring'      ? 'scoring'      : 'menu';
+    setHomeView(view as typeof homeView);
+  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
   const [cardHeight, setCardHeight] = useState<number | undefined>(undefined);
   const cardInnerRef = useRef<HTMLDivElement>(null);
 
   const {
     phase: bpmPhase, round: bpmRound, countdown: bpmCountdown,
     sliderBpm, setSliderBpm, results: bpmResults, pulseKey: bpmPulseKey,
-    sliderMin, sliderMax,
+    sliderMin, sliderMax, bpmGamesPlayed, bpmBest,
     startGame: startBpmGame, submitGuess: submitBpmGuess, nextRound: nextBpmRound, resetGame: resetBpmGame,
   } = useBpmGame();
 
@@ -59,15 +76,24 @@ export default function GameClient() {
 
   const switchView = useCallback((target: typeof homeView) => {
     if (target === homeView) return;
-    const nextUrl = VIEW_URL[target] ?? '/';
+    const nextUrl = VIEW_URL[target];
     const currUrl = VIEW_URL[homeView] ?? '/';
-    if (nextUrl !== currUrl) history.pushState(null, '', nextUrl);
+    if (nextUrl && nextUrl !== currUrl) history.pushState(null, '', nextUrl);
     setViewFading(true);
     setTimeout(() => {
       setHomeView(target);
       setViewFading(false);
     }, 250);
   }, [homeView]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const openArticle = useCallback((slug: string, type: 'pitch' | 'bpm') => {
+    setActiveArticleSlug(slug);
+    setViewFading(true);
+    setTimeout(() => {
+      setHomeView(type === 'bpm' ? 'bpm-article' : 'article');
+      setViewFading(false);
+    }, 250);
+  }, []);
 
 
   const ARTICLES_DATA = [
@@ -134,6 +160,7 @@ export default function GameClient() {
   ];
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [globalStats, setGlobalStats] = useState<{games: number, notes: number} | null>(null);
+  const [bpmGlobalStats, setBpmGlobalStats] = useState<{games: number} | null>(null);
   const [localStats, setLocalStats] = useState<{gamesPlayed: number, maxStreak: number, scoreHistory: number[]} | null>(null);
 
   const [activeNoteIdx, setActiveNoteIdx] = useState<number | null>(null);
@@ -153,7 +180,7 @@ export default function GameClient() {
       cancelAnimationFrame(raf);
       clearTimeout(timer);
     };
-  }, [homeView, leaderboard, localStats, globalStats, bpmPhase]);
+  }, [homeView, leaderboard, localStats, globalStats, bpmGlobalStats, bpmPhase]);
 
   useEffect(() => {
     let storedId = localStorage.getItem('pitchd_device_id');
@@ -180,6 +207,11 @@ export default function GameClient() {
       .then(r => r.json())
       .then(data => setGlobalStats(data))
       .catch(() => {});
+
+    fetch('/api/stats/bpm-global')
+      .then(r => r.json())
+      .then(data => setBpmGlobalStats(data))
+      .catch(() => {});
   }, []);
 
   // Sync card view when user presses browser back/forward
@@ -201,6 +233,17 @@ export default function GameClient() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  // Auto-submit BPM session to Supabase when a game ends
+  useEffect(() => {
+    if (bpmPhase !== 'final' || bpmResults.length < 5) return;
+    const total = bpmResults.reduce((s, r) => s + r.points, 0);
+    fetch('/api/bpm-sessions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ device_id: deviceId, total_score: Math.round(total * 100) / 100 }),
+    }).catch(() => {});
+  }, [bpmPhase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchLeaderboard = async () => {
     switchView('rank');
@@ -624,17 +667,17 @@ export default function GameClient() {
                   <p className="text-text-muted text-sm mb-8">Articles on music theory, pitch recognition, and auditory memory.</p>
                   <div className="flex flex-col gap-4 max-h-[50vh] overflow-y-auto hide-scrollbar">
                     {ARTICLES_DATA.map((article) => (
-                      <Link
+                      <button
                         key={article.slug}
-                        href={`/articles/${article.slug}`}
-                        className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                        onClick={() => openArticle(article.slug, 'pitch')}
+                        className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group text-left w-full"
                       >
                         <span className="text-text-muted text-[10px] font-sans tracking-[0.2em] uppercase">{article.date}</span>
                         <h3 className="text-lg font-display text-white group-hover:text-purple-400 transition-colors leading-tight mt-1.5 mb-2">
                           {article.title}
                         </h3>
                         <p className="text-[#a0a0a0] text-sm leading-relaxed">{article.description}</p>
-                      </Link>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -684,21 +727,34 @@ export default function GameClient() {
                       <p className="text-[#a0a0a0] text-sm leading-relaxed mb-4 font-sans pr-6">
                         A metronome plays at a mystery tempo for a few seconds. Listen carefully, then drag the slider to match the BPM you heard.
                       </p>
-                      <p className="text-[#a0a0a0] text-sm leading-relaxed mb-8 font-sans pr-6">
+                      <p className="text-[#a0a0a0] text-sm leading-relaxed mb-10 font-sans pr-6">
                         Difficulty is revealed after each round. 5 rounds — max 20 points.
                       </p>
-                      <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em] mb-3 block">Scoring</span>
-                      <div className="flex flex-col gap-2 mb-8">
-                        {BPM_SCORING_DATA.map(s => (
-                          <div key={s.label} className="flex items-center justify-between">
-                            <span className="text-[#666] text-xs font-sans">{s.range}</span>
-                            <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg ${s.badge}`}>{s.label}</span>
-                          </div>
-                        ))}
-                      </div>
                       <button onClick={startBpmGame} className="w-full py-4 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm">
                         Start Game
                       </button>
+
+                      {(bpmGlobalStats || bpmGamesPlayed > 0 || bpmBest > 0) && (
+                        <div className="mt-8 pt-6 border-t border-white/5 flex flex-col items-start w-full stats-enter">
+                          {bpmGlobalStats && (
+                            <div className="flex items-center gap-3 mb-1.5">
+                              <span className="relative flex h-2 w-2">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
+                              </span>
+                              <span className="text-white font-sans text-xs tracking-wide">{bpmGlobalStats.games.toLocaleString()}</span>
+                              <span className="text-[#666] font-sans text-xs">games played worldwide</span>
+                            </div>
+                          )}
+                          {bpmBest > 0 && (
+                            <div className="flex items-center gap-3">
+                              <span className="relative flex h-2 w-2 bg-transparent"></span>
+                              <span className="text-white font-sans text-xs tracking-wide">{bpmBest.toFixed(2)}</span>
+                              <span className="text-[#666] font-sans text-xs">personal best</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -853,15 +909,15 @@ export default function GameClient() {
                   <p className="text-text-muted text-sm mb-8">Articles on tempo training, beat recognition, and rhythmic ear development.</p>
                   <div className="flex flex-col gap-4">
                     {BPM_ARTICLES_DATA.map((article) => (
-                      <Link
+                      <button
                         key={article.slug}
-                        href={`/bpm/articles/${article.slug}`}
-                        className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group"
+                        onClick={() => openArticle(article.slug, 'bpm')}
+                        className="p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors group text-left w-full"
                       >
                         <span className="text-text-muted text-[10px] font-sans tracking-[0.2em] uppercase">{article.date}</span>
                         <h3 className="text-lg font-display text-white group-hover:text-orange-400 transition-colors leading-tight mt-1.5 mb-2">{article.title}</h3>
                         <p className="text-[#a0a0a0] text-sm leading-relaxed">{article.description}</p>
-                      </Link>
+                      </button>
                     ))}
                   </div>
                 </div>
@@ -893,6 +949,70 @@ export default function GameClient() {
                   </div>
                 </div>
               )}
+
+              {/* ── PITCH ARTICLE DETAIL ── */}
+              {homeView === 'article' && activeArticleSlug && PITCH_ARTICLES[activeArticleSlug] && (() => {
+                const article = PITCH_ARTICLES[activeArticleSlug];
+                return (
+                  <div key={`article-${activeArticleSlug}`} className="card-view-enter relative z-10 w-full">
+                    <button onClick={() => switchView('articles')} className="flex items-center gap-2 text-text-muted hover:text-white transition-colors text-xs uppercase tracking-widest mb-8">
+                      <ArrowLeft className="size-3.5" /> Back to Articles
+                    </button>
+                    <span className="text-text-muted text-[10px] font-sans tracking-[0.2em] uppercase mb-3 block">{article.date}</span>
+                    <h2 className="text-2xl sm:text-3xl font-display text-white mb-6 tracking-tighter leading-tight">{article.title}</h2>
+                    <div className="max-h-[52vh] overflow-y-auto hide-scrollbar pr-1">
+                      <p className="text-white/70 text-sm leading-relaxed mb-6">{article.description}</p>
+                      {article.sections.map((section, i) => (
+                        <div key={i} className="mb-5">
+                          <h3 className="text-base font-display text-white mb-2">{section.heading}</h3>
+                          <p className="text-[#a0a0a0] text-sm leading-relaxed">{section.body}</p>
+                        </div>
+                      ))}
+                      <div className="mt-8 mb-2 p-6 bg-black/40 rounded-2xl border border-purple-500/20 text-center">
+                        <p className="text-sm text-white/70 mb-4">{article.cta}</p>
+                        <button
+                          onClick={() => switchView('menu')}
+                          className="px-6 py-3 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 transition-all text-xs"
+                        >
+                          Play pitchd.
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* ── BPM ARTICLE DETAIL ── */}
+              {homeView === 'bpm-article' && activeArticleSlug && BPM_ARTICLES[activeArticleSlug] && (() => {
+                const article = BPM_ARTICLES[activeArticleSlug];
+                return (
+                  <div key={`bpm-article-${activeArticleSlug}`} className="card-view-enter relative z-10 w-full">
+                    <button onClick={() => switchView('bpm-articles')} className="flex items-center gap-2 text-text-muted hover:text-white transition-colors text-xs uppercase tracking-widest mb-8">
+                      <ArrowLeft className="size-3.5" /> Back to BPM Guides
+                    </button>
+                    <span className="text-text-muted text-[10px] font-sans tracking-[0.2em] uppercase mb-3 block">{article.date}</span>
+                    <h2 className="text-2xl sm:text-3xl font-display text-white mb-6 tracking-tighter leading-tight">{article.title}</h2>
+                    <div className="max-h-[52vh] overflow-y-auto hide-scrollbar pr-1">
+                      <p className="text-white/70 text-sm leading-relaxed mb-6">{article.description}</p>
+                      {article.sections.map((section, i) => (
+                        <div key={i} className="mb-5">
+                          <h3 className="text-base font-display text-white mb-2">{section.heading}</h3>
+                          <p className="text-[#a0a0a0] text-sm leading-relaxed">{section.body}</p>
+                        </div>
+                      ))}
+                      <div className="mt-8 mb-2 p-6 bg-black/40 rounded-2xl border border-orange-500/20 text-center">
+                        <p className="text-sm text-white/70 mb-4">{article.cta}</p>
+                        <button
+                          onClick={() => switchView('bpm-home')}
+                          className="px-6 py-3 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 transition-all text-xs"
+                        >
+                          Play BPM Guesser
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               </div>
 

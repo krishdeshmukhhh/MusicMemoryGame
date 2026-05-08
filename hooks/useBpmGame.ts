@@ -44,19 +44,27 @@ export type RoundResult = {
 export type BpmPhase = 'idle' | 'listening' | 'guessing' | 'result' | 'final';
 
 export function useBpmGame() {
-  const [phase, setPhase]         = useState<BpmPhase>('idle');
-  const [round, setRound]         = useState(1);
-  const [targetBpm, setTargetBpm] = useState(0);
-  const [countdown, setCountdown] = useState(LISTEN_SECONDS);
-  const [sliderBpm, setSliderBpm] = useState(SLIDER_DEFAULT);
-  const [results, setResults]     = useState<RoundResult[]>([]);
-  const [pulseKey, setPulseKey]   = useState(0);
+  const [phase, setPhase]               = useState<BpmPhase>('idle');
+  const [round, setRound]               = useState(1);
+  const [targetBpm, setTargetBpm]       = useState(0);
+  const [countdown, setCountdown]       = useState(LISTEN_SECONDS);
+  const [sliderBpm, setSliderBpm]       = useState(SLIDER_DEFAULT);
+  const [results, setResults]           = useState<RoundResult[]>([]);
+  const [pulseKey, setPulseKey]         = useState(0);
+  const [bpmGamesPlayed, setBpmGamesPlayed] = useState(0);
+  const [bpmBest, setBpmBest]           = useState(0);
 
   const ctxRef           = useRef<AudioContext | null>(null);
   const nextTimeRef      = useRef(0);
   const schedulerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const pulseTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Refs so the visibilitychange handler always sees current values without stale closures
+  const phaseRef     = useRef<BpmPhase>('idle');
+  phaseRef.current   = phase;
+  const sliderBpmRef = useRef(SLIDER_DEFAULT);
+  sliderBpmRef.current = sliderBpm;
 
   const createClick = (ctx: AudioContext, time: number) => {
     const osc  = ctx.createOscillator();
@@ -89,7 +97,8 @@ export function useBpmGame() {
   const startMetronome = useCallback((bpm: number) => {
     stopMetronome();
     if (!ctxRef.current) ctxRef.current = new AudioContext();
-    const ctx     = ctxRef.current;
+    const ctx = ctxRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
     const beatSec = 60 / bpm;
     nextTimeRef.current = ctx.currentTime + 0.1;
 
@@ -127,6 +136,13 @@ export function useBpmGame() {
     }, 1000);
   }, [startMetronome, stopMetronome, stopCountdown]);
 
+  useEffect(() => {
+    try {
+      setBpmGamesPlayed(parseInt(localStorage.getItem('bpm_games_played') || '0', 10));
+      setBpmBest(parseFloat(localStorage.getItem('bpm_best') || '0'));
+    } catch { /* localStorage unavailable */ }
+  }, []);
+
   const startGame = useCallback(() => {
     setRound(1);
     setResults([]);
@@ -154,7 +170,13 @@ export function useBpmGame() {
         try {
           const total = next.reduce((s, r) => s + r.points, 0);
           const best  = parseFloat(localStorage.getItem('bpm_best') || '0');
-          if (total > best) localStorage.setItem('bpm_best', String(total));
+          if (total > best) {
+            localStorage.setItem('bpm_best', String(total));
+            setBpmBest(total);
+          }
+          const newCount = parseInt(localStorage.getItem('bpm_games_played') || '0', 10) + 1;
+          localStorage.setItem('bpm_games_played', String(newCount));
+          setBpmGamesPlayed(newCount);
         } catch { /* localStorage unavailable */ }
       } else {
         setPhase('result');
@@ -177,6 +199,22 @@ export function useBpmGame() {
     setSliderBpm(SLIDER_DEFAULT);
   }, [stopMetronome, stopCountdown]);
 
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        stopMetronome();
+        stopCountdown();
+        // If mid-listen, skip straight to guessing — they heard what they heard
+        if (phaseRef.current === 'listening') setPhase('guessing');
+      } else {
+        // Tab returned: restart slider metronome if user was mid-guess
+        if (phaseRef.current === 'guessing') startMetronome(sliderBpmRef.current);
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [stopMetronome, stopCountdown, startMetronome]);
+
   useEffect(() => () => {
     stopMetronome();
     stopCountdown();
@@ -185,6 +223,7 @@ export function useBpmGame() {
   return {
     phase, round, targetBpm, countdown, sliderBpm, setSliderBpm,
     results, pulseKey, sliderMin: SLIDER_MIN, sliderMax: SLIDER_MAX,
+    bpmGamesPlayed, bpmBest,
     startGame, submitGuess, nextRound, resetGame,
   };
 }

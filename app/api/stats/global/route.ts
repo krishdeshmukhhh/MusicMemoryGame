@@ -28,7 +28,7 @@ export async function GET() {
 
     // A full 5-round game involves the player pressing roughly 25-35 notes.
     // We can mathematically derive the notes pressed without killing the database!
-    const totalNotes = totalGames * 28;
+    const totalNotes = totalGames * 18;
 
     return NextResponse.json({ games: totalGames, notes: totalNotes }, {
       headers: {

@@ -35,7 +35,7 @@ export default function Page() {
                 "name": "What is pitchd.?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "pitchd. is a free daily ear training game. Each day, a new 5-note melody is generated and every player worldwide hears the same sequence. Listen to the notes, then recreate them on the on-screen piano. Your score is ranked on a global leaderboard."
+                  "text": "pitchd. is a free daily ear training and rhythm game. The Pitch game tests your pitch memory: listen to a 5-note melody and recreate it on an on-screen piano, ranked on a global leaderboard. The BPM game tests your sense of rhythm: hear a mystery tempo then use a slider to match the BPM exactly."
                 }
               },
               {
@@ -51,7 +51,15 @@ export default function Page() {
                 "name": "Is pitchd. free?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Yes, pitchd. is completely free to play. No sign-up or account is required. Just open the site and start playing."
+                  "text": "Yes, pitchd. is completely free to play. No sign-up or account is required. Just open the site and start playing both the Pitch game and the BPM Guesser."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "What is the BPM Guesser game?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "The BPM Guesser is pitchd.'s rhythm game. A metronome plays at a mystery tempo for a few seconds, then stops. You use a slider to set what you think the BPM was and submit your guess. Your score is based on how close your guess is — within 1.5% earns a Perfect, within 4% a Great, within 8% a Good, within 15% Close, and beyond that a Miss. Play 5 rounds and see your total score."
                 }
               },
               {
@@ -76,6 +84,14 @@ export default function Page() {
                 "acceptedAnswer": {
                   "@type": "Answer",
                   "text": "Daily ear training can significantly improve your pitch recognition. While true absolute pitch is largely developed in early childhood, consistent practice with tools like pitchd. builds strong relative pitch and pitch memory — skills that make you a better musician at any level."
+                }
+              },
+              {
+                "@type": "Question",
+                "name": "How can I improve my sense of rhythm and BPM recognition?",
+                "acceptedAnswer": {
+                  "@type": "Answer",
+                  "text": "Regular tempo training is key. Use a metronome daily, tap along to music, and test yourself with games like pitchd.'s BPM Guesser. Studies show that active tempo-matching exercises — where you must set a slider or tap a beat to reproduce a heard tempo — improve BPM recognition significantly faster than passive listening alone."
                 }
               }
             ]
@@ -113,9 +129,18 @@ export default function Page() {
           <a href="/articles/perfect-pitch-vs-relative-pitch">Perfect Pitch vs. Relative Pitch</a>
           <a href="/articles/how-to-train-your-ears">The Ultimate Guide to Ear Training</a>
         </nav>
-        <nav aria-label="External links">
-          <a href="/scoring">Scoring Details</a>
-          <a href="/articles">All Articles</a>
+        <h2>BPM Guesser</h2>
+        <p>
+          The BPM Guesser is pitchd.&apos;s rhythm game. A metronome plays at a mystery tempo,
+          then stops. Use a slider to match the BPM you heard. Score across 5 rounds:
+          Perfect (≤1.5%), Great (≤4%), Good (≤8%), Close (≤15%), or Miss.
+        </p>
+        <nav aria-label="Site sections">
+          <a href="/scoring">Pitch Scoring Details</a>
+          <a href="/articles">All Ear Training Articles</a>
+          <a href="/bpm">BPM Guesser Game</a>
+          <a href="/bpm/scoring">BPM Scoring Details</a>
+          <a href="/bpm/articles">Rhythm &amp; BPM Guides</a>
         </nav>
       </div>
 

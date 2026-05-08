@@ -221,6 +221,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: `${article.title} | pitchd. Articles`,
     description: article.description,
+    keywords: ['ear training', 'perfect pitch', 'music theory', 'pitch recognition', 'pitchd', article.title.split(' ').slice(0, 4).join(' ').toLowerCase()],
     alternates: {
       canonical: `https://pitchd.net/articles/${slug}`,
     },
@@ -230,11 +231,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       url: `https://pitchd.net/articles/${slug}`,
       type: 'article',
       publishedTime: article.date,
+      modifiedTime: article.date,
     },
     twitter: {
-      card: 'summary',
+      card: 'summary_large_image',
       title: article.title,
       description: article.description,
+      images: ['https://pitchd.net/og.png'],
     },
   };
 }
@@ -247,7 +250,6 @@ export default async function ArticleContentPage({ params }: Props) {
 
   return (
     <main className="min-h-screen w-full flex flex-col items-center p-8 z-10 relative">
-      {/* Article JSON-LD Schema */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -257,9 +259,30 @@ export default async function ArticleContentPage({ params }: Props) {
             "headline": article.title,
             "description": article.description,
             "datePublished": article.date,
-            "author": { "@type": "Organization", "name": "pitchd" },
-            "publisher": { "@type": "Organization", "name": "pitchd", "url": "https://pitchd.net" },
-            "mainEntityOfPage": `https://pitchd.net/articles/${slug}`,
+            "dateModified": article.date,
+            "author": { "@type": "Organization", "name": "pitchd", "url": "https://pitchd.net" },
+            "publisher": {
+              "@type": "Organization",
+              "name": "pitchd",
+              "url": "https://pitchd.net",
+              "logo": { "@type": "ImageObject", "url": "https://pitchd.net/icon.png" }
+            },
+            "mainEntityOfPage": { "@type": "WebPage", "@id": `https://pitchd.net/articles/${slug}` },
+            "image": "https://pitchd.net/og.png",
+          })
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+              { "@type": "ListItem", "position": 1, "name": "Home", "item": "https://pitchd.net" },
+              { "@type": "ListItem", "position": 2, "name": "Articles", "item": "https://pitchd.net/articles" },
+              { "@type": "ListItem", "position": 3, "name": article.title, "item": `https://pitchd.net/articles/${slug}` },
+            ]
           })
         }}
       />

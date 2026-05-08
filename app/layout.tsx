@@ -11,7 +11,7 @@ export const metadata: Metadata = {
     template: "%s | pitchd."
   },
   description: "Free daily ear training game. Listen to a 5-note melody and recreate it perfectly — then see where you rank globally. Can you hit the Top 1%? No sign-up needed.",
-  keywords: ["perfect pitch test", "ear training game", "free ear training", "daily music puzzle", "pitch memory game", "interval recognition game", "music theory game", "relative pitch training", "perfect pitch", "auditory memory", "wordle for musicians", "pitchd"],
+  keywords: ["perfect pitch test", "ear training game", "free ear training", "daily music puzzle", "pitch memory game", "interval recognition game", "music theory game", "relative pitch training", "perfect pitch", "auditory memory", "wordle for musicians", "bpm game", "bpm guesser", "tempo training", "beat recognition", "rhythm ear training", "pitchd"],
   authors: [{ name: "pitchd team" }],
   creator: "pitchd",
   publisher: "pitchd",
@@ -75,6 +75,39 @@ export default function RootLayout({
   return (
     <html lang="en" className="antialiased">
       <body className="min-h-screen flex flex-col">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "WebSite",
+              "name": "pitchd.",
+              "url": "https://pitchd.net",
+              "description": "Free daily ear training and BPM games. Test your pitch memory and rhythm recognition — no sign-up needed.",
+              "potentialAction": {
+                "@type": "SearchAction",
+                "target": {
+                  "@type": "EntryPoint",
+                  "urlTemplate": "https://pitchd.net/articles?q={search_term_string}"
+                },
+                "query-input": "required name=search_term_string"
+              }
+            })
+          }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "Organization",
+              "name": "pitchd.",
+              "url": "https://pitchd.net",
+              "logo": "https://pitchd.net/icon.png",
+              "sameAs": []
+            })
+          }}
+        />
         {children}
         <Analytics />
       </body>

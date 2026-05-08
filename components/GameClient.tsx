@@ -8,6 +8,7 @@ import Piano from '@/components/Piano';
 import ScoreReveal from '@/components/ScoreReveal';
 import { engine } from '@/lib/audio';
 import { generateRandomSequence, getDailySequenceForRound, getDailyDateString } from '@/lib/seed';
+import { useBpmGame } from '@/hooks/useBpmGame';
 
 type GameState = 'home' | 'listen' | 'play' | 'reveal' | 'results';
 type LeaderboardEntry = { initials: string, score: number, device_id: string, created_at: string };
@@ -32,12 +33,28 @@ export default function GameClient() {
   const [isPosted, setIsPosted] = useState(false);
   const [showError, setShowError] = useState(false);
   const [percentile, setPercentile] = useState<number | null>(null);
-  const [homeView, setHomeView] = useState<'menu' | 'stats' | 'articles' | 'scoring' | 'rank'>('menu');
+  const [homeView, setHomeView] = useState<'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring'>(() => {
+    if (typeof window === 'undefined') return 'menu';
+    const p = window.location.pathname;
+    if (p === '/bpm')           return 'bpm-home';
+    if (p === '/bpm/articles')  return 'bpm-articles';
+    if (p === '/bpm/scoring')   return 'bpm-scoring';
+    if (p === '/articles')      return 'articles';
+    if (p === '/scoring')       return 'scoring';
+    return 'menu';
+  });
   const [viewFading, setViewFading] = useState(false);
   const [cardHeight, setCardHeight] = useState<number | undefined>(undefined);
   const cardInnerRef = useRef<HTMLDivElement>(null);
 
-  const VIEW_URL: Record<string, string> = { menu: '/', articles: '/articles', scoring: '/scoring', stats: '/', rank: '/' };
+  const {
+    phase: bpmPhase, round: bpmRound, countdown: bpmCountdown,
+    sliderBpm, setSliderBpm, results: bpmResults, pulseKey: bpmPulseKey,
+    sliderMin, sliderMax,
+    startGame: startBpmGame, submitGuess: submitBpmGuess, nextRound: nextBpmRound, resetGame: resetBpmGame,
+  } = useBpmGame();
+
+  const VIEW_URL: Record<string, string> = { menu: '/', articles: '/articles', scoring: '/scoring', stats: '/', rank: '/', 'bpm-home': '/bpm', 'bpm-articles': '/bpm/articles', 'bpm-scoring': '/bpm/scoring' };
 
   const switchView = useCallback((target: typeof homeView) => {
     if (target === homeView) return;
@@ -91,6 +108,22 @@ export default function GameClient() {
     },
   ];
 
+  const BPM_SCORING_DATA_UPDATED = [
+    { range: '≤ 1.5% off', label: 'Perfect', pts: '4.00', badge: 'bg-green-500/20 text-green-400',  desc: 'Score: 4.00 → 3.00. Dead on — your internal clock is elite.' },
+    { range: '≤ 4% off',   label: 'Great',   pts: '3.00', badge: 'bg-yellow-500/20 text-yellow-400', desc: 'Score: 3.00 → 2.00. Very close — a trained ear.' },
+    { range: '≤ 8% off',   label: 'Good',    pts: '2.00', badge: 'bg-orange-500/20 text-orange-400', desc: 'Score: 2.00 → 1.00. In the ballpark — keep practicing.' },
+    { range: '≤ 15% off',  label: 'Close',   pts: '1.00', badge: 'bg-stone-500/20 text-stone-400',   desc: 'Score: 1.00 → 0.00. Audible difference, but you felt the groove.' },
+    { range: '> 15% off',  label: 'Miss',    pts: '0.00', badge: 'bg-red-500/20 text-red-400',       desc: 'Score: 0.00. Too far off — listen for the pulse.' },
+  ];
+
+  const BPM_ARTICLES_DATA = [
+    { title: 'How to Train Your Tempo Ear', description: 'Internalize BPM and beat recognition with techniques used by professional drummers and producers.', date: '2026-05-05' },
+    { title: 'The Science of Groove: Why Tempo Perception Varies', description: 'Explore why some people naturally feel BPM better and what neuroscience tells us about rhythmic entrainment.', date: '2026-05-06' },
+    { title: 'Metronome Practice: Building a Reliable Internal Clock', description: 'Most musicians use the metronome wrong. Here\'s how to use it to develop an internal sense of tempo that lasts.', date: '2026-05-07' },
+  ];
+
+  const BPM_SCORING_DATA = BPM_SCORING_DATA_UPDATED;
+
   const SCORING_DATA = [
     { name: 'Perfect Match', desc: 'You correctly identified the exact note and octave.', pts: '2.50', badge: 'bg-green-500/20 text-green-400' },
     { name: 'Perfect Octave', desc: 'Correct note, wrong octave. A huge music theory win.', pts: '2.00', badge: 'bg-blue-500/20 text-blue-400' },
@@ -119,7 +152,7 @@ export default function GameClient() {
       cancelAnimationFrame(raf);
       clearTimeout(timer);
     };
-  }, [homeView, leaderboard, localStats, globalStats]);
+  }, [homeView, leaderboard, localStats, globalStats, bpmPhase]);
 
   useEffect(() => {
     let storedId = localStorage.getItem('pitchd_device_id');
@@ -153,8 +186,11 @@ export default function GameClient() {
     const onPop = () => {
       const path = window.location.pathname;
       const view: typeof homeView =
-        path === '/articles' ? 'articles' :
-        path === '/scoring'  ? 'scoring'  : 'menu';
+        path === '/bpm'          ? 'bpm-home'     :
+        path === '/bpm/articles' ? 'bpm-articles' :
+        path === '/bpm/scoring'  ? 'bpm-scoring'  :
+        path === '/articles'     ? 'articles'     :
+        path === '/scoring'      ? 'scoring'      : 'menu';
       setViewFading(true);
       setTimeout(() => {
         setHomeView(view);
@@ -404,11 +440,19 @@ export default function GameClient() {
           <div className="flex flex-col items-center justify-center w-full px-4 animate-in fade-in zoom-in-95 duration-1000">
             {/* The Main Card */}
             <div
-              className={`w-full bg-[#050505] border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden transition-[max-width,height] duration-500 ease-in-out ${homeView === 'menu' || homeView === 'stats' || homeView === 'rank' ? 'max-w-[420px]' : 'max-w-[520px]'}`}
+              className={`w-full bg-[#050505] border border-white/10 rounded-3xl p-8 shadow-2xl relative overflow-hidden transition-[max-width,height] duration-500 ease-in-out ${homeView === 'menu' || homeView === 'stats' || homeView === 'rank' || homeView === 'bpm-home' ? 'max-w-[420px]' : 'max-w-[520px]'}`}
               style={cardHeight !== undefined ? { height: cardHeight + 64 } : undefined}
             >
               {/* Internal Glow */}
               <div className="absolute top-0 right-0 w-64 h-64 bg-white/[0.03] rounded-full blur-3xl pointer-events-none transform translate-x-1/3 -translate-y-1/3" />
+
+              {/* BPM countdown — top-right of card, only during listening */}
+              {homeView === 'bpm-home' && bpmPhase === 'listening' && (
+                <div className="absolute top-5 right-7 flex flex-col items-end z-20 pointer-events-none">
+                  <span className="text-4xl font-display text-white leading-none tracking-tighter">{bpmCountdown}</span>
+                  <span className="text-[9px] uppercase tracking-[0.2em] text-text-muted mt-0.5">sec</span>
+                </div>
+              )}
 
               <div ref={cardInnerRef}>
               {/* ── MENU VIEW ── */}
@@ -637,6 +681,226 @@ export default function GameClient() {
                   </div>
                 </div>
               )}
+              {/* ── BPM HOME (all game phases live here) ── */}
+              {homeView === 'bpm-home' && (
+                <div key={`bpm-${bpmPhase}-${bpmResults.length}`} className="card-view-enter relative z-10 w-full">
+
+                  {/* BPM — Idle */}
+                  {bpmPhase === 'idle' && (
+                    <div className="flex flex-col">
+                      <div className="flex items-center justify-between mb-6">
+                        <h1 className="text-6xl sm:text-[5rem] font-display text-white tracking-tighter leading-none">bpm.</h1>
+                        <button onClick={() => switchView('menu')} className="text-text-muted hover:text-white transition-colors" aria-label="Back"><X className="size-5" /></button>
+                      </div>
+                      <p className="text-[#a0a0a0] text-sm leading-relaxed mb-4 font-sans pr-6">
+                        A metronome plays at a mystery tempo for a few seconds. Listen carefully, then drag the slider to match the BPM you heard.
+                      </p>
+                      <p className="text-[#a0a0a0] text-sm leading-relaxed mb-8 font-sans pr-6">
+                        Difficulty is revealed after each round. 5 rounds — max 20 points.
+                      </p>
+                      <span className="text-[10px] font-bold text-white uppercase tracking-[0.2em] mb-3 block">Scoring</span>
+                      <div className="flex flex-col gap-2 mb-8">
+                        {BPM_SCORING_DATA.map(s => (
+                          <div key={s.label} className="flex items-center justify-between">
+                            <span className="text-[#666] text-xs font-sans">{s.range}</span>
+                            <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg ${s.badge}`}>{s.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <button onClick={startBpmGame} className="w-full py-4 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm">
+                        Start Game
+                      </button>
+                    </div>
+                  )}
+
+                  {/* BPM — Listening */}
+                  {bpmPhase === 'listening' && (
+                    <div className="flex flex-col items-center gap-10 py-4">
+                      <p className="text-[10px] font-bold text-white uppercase tracking-[0.2em] animate-pulse">Listen carefully</p>
+                      <div className="relative flex items-center justify-center w-40 h-40">
+                        <span
+                          key={bpmPulseKey}
+                          className="absolute inset-0 rounded-full border border-white/25 pointer-events-none"
+                          style={{ animation: 'bpm-ring 0.55s ease-out both' }}
+                        />
+                        <span
+                          key={`dot-${bpmPulseKey}`}
+                          className="size-5 rounded-full bg-white pointer-events-none"
+                          style={{ animation: 'beat-dot 0.25s ease-out both' }}
+                        />
+                      </div>
+                      <p className="text-text-muted text-[10px] uppercase tracking-widest">remember the tempo</p>
+                      <span className="text-[10px] uppercase tracking-[0.2em] text-text-faint">Round {bpmRound} of 5</span>
+                    </div>
+                  )}
+
+                  {/* BPM — Guessing */}
+                  {bpmPhase === 'guessing' && (
+                    <div className="flex flex-col items-center gap-8">
+                      <div className="text-center w-full">
+                        <span className="text-[10px] uppercase tracking-[0.2em] text-text-muted block mb-2">What was the BPM?</span>
+                        <span className="text-[6rem] leading-none font-display text-white tracking-tighter tabular-nums">{sliderBpm}</span>
+                        <p className="text-[10px] text-text-muted uppercase tracking-[0.2em] mt-1">BPM</p>
+                      </div>
+                      <div className="w-full flex flex-col gap-2">
+                        <input
+                          type="range"
+                          min={sliderMin}
+                          max={sliderMax}
+                          step={1}
+                          value={sliderBpm}
+                          onChange={e => setSliderBpm(Number(e.target.value))}
+                          className="w-full accent-white h-1 cursor-pointer"
+                        />
+                        <div className="flex justify-between">
+                          <span className="text-text-faint text-[10px]">{sliderMin}</span>
+                          <span className="text-text-faint text-[10px]">{sliderMax}</span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => submitBpmGuess(sliderBpm)}
+                        className="w-full py-4 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm"
+                      >
+                        Lock In
+                      </button>
+                    </div>
+                  )}
+
+                  {/* BPM — Round Result */}
+                  {bpmPhase === 'result' && (() => {
+                    const last = bpmResults[bpmResults.length - 1];
+                    if (!last) return null;
+                    const scoreColor = { Perfect: 'text-green-400', Great: 'text-yellow-400', Good: 'text-orange-400', Close: 'text-stone-400', Miss: 'text-red-400' };
+                    const diffBadge  = { easy: 'bg-green-500/20 text-green-400', medium: 'bg-yellow-500/20 text-yellow-400', hard: 'bg-red-500/20 text-red-400' };
+                    return (
+                      <div className="flex flex-col gap-6">
+                        <div className="text-center">
+                          <span className="text-[10px] text-text-muted uppercase tracking-[0.2em] mb-1 block">Round {bpmResults.length} of 5</span>
+                          <span className={`text-4xl font-display tracking-tighter ${scoreColor[last.label as keyof typeof scoreColor] ?? 'text-white'}`}>{last.label}</span>
+                        </div>
+                        <div className="flex justify-between items-end border border-white/5 rounded-2xl p-5">
+                          <div>
+                            <span className="text-[10px] text-text-muted uppercase tracking-[0.2em] block mb-1">Actual</span>
+                            <span className="text-3xl font-display text-white">{last.targetBpm} <span className="text-text-faint text-base">bpm</span></span>
+                          </div>
+                          <span className="text-text-faint font-display text-2xl mb-1">vs</span>
+                          <div className="text-right">
+                            <span className="text-[10px] text-text-muted uppercase tracking-[0.2em] block mb-1">Your Guess</span>
+                            <span className="text-3xl font-display text-white">{last.guessedBpm} <span className="text-text-faint text-base">bpm</span></span>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex flex-col gap-1">
+                            <span className={`text-xs font-bold uppercase tracking-widest px-2.5 py-1 rounded-lg ${diffBadge[last.difficulty]} self-start`}>{last.difficulty}</span>
+                            <span className="text-text-faint text-[10px] tracking-widest">{last.pct.toFixed(1)}% off</span>
+                          </div>
+                          <span className="text-white font-display text-xl">{last.points.toFixed(2)} <span className="text-text-faint text-sm">/ 4.00</span></span>
+                        </div>
+                        <div className="grid grid-cols-5 gap-px bg-border overflow-hidden rounded-sm">
+                          {bpmResults.map((r, i) => (
+                            <div key={i} className="flex flex-col items-center bg-bg py-3 gap-0.5">
+                              <span className="text-text-faint text-[9px] uppercase tracking-widest">R{i+1}</span>
+                              <span>{r.emoji}</span>
+                              <span className="text-white font-display text-xs">{r.points.toFixed(2)}</span>
+                            </div>
+                          ))}
+                          {Array.from({ length: 5 - bpmResults.length }).map((_, i) => (
+                            <div key={`e${i}`} className="flex flex-col items-center bg-bg py-3 gap-0.5">
+                              <span className="text-text-faint text-[9px] uppercase tracking-widest">R{bpmResults.length+i+1}</span>
+                              <span className="text-text-faint text-xs">—</span>
+                            </div>
+                          ))}
+                        </div>
+                        <button onClick={nextBpmRound} className="w-full py-3 rounded-full border border-border text-white hover:bg-white hover:text-black transition-all tracking-widest uppercase text-xs">
+                          Round {bpmResults.length + 1}
+                        </button>
+                      </div>
+                    );
+                  })()}
+
+                  {/* BPM — Final */}
+                  {bpmPhase === 'final' && (
+                    <div className="flex flex-col gap-6">
+                      <div className="text-center">
+                        <span className="text-[10px] text-text-muted uppercase tracking-[0.3em] block mb-3">BPM Challenge</span>
+                        <div className="flex items-baseline justify-center gap-1">
+                          <span className="text-[5rem] leading-none font-display text-white tracking-tighter">{bpmResults.reduce((s, r) => s + r.points, 0).toFixed(2)}</span>
+                          <span className="text-2xl text-text-faint font-display">/ 20.00</span>
+                        </div>
+                        <p className="text-text-muted text-xs tracking-[0.3em] mt-2">{bpmResults.map(r => r.emoji).join('')}</p>
+                      </div>
+                      <div className="grid grid-cols-5 gap-px bg-border p-px overflow-hidden rounded-sm">
+                        {bpmResults.map((r, i) => (
+                          <div key={i} className="flex flex-col items-center bg-bg py-4 gap-1 cursor-default hover:bg-surface transition-colors">
+                            <span className="text-text-faint text-[9px] uppercase tracking-widest">R{i+1}</span>
+                            <span className="text-lg">{r.emoji}</span>
+                            <span className="text-white font-display text-sm">{r.targetBpm}</span>
+                            <span className="text-text-muted text-[10px]">↳{r.guessedBpm}</span>
+                            <span className="text-white font-display text-[10px]">{r.points.toFixed(2)}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => { const total = bpmResults.reduce((s,r)=>s+r.points,0).toFixed(2); const t = `bpm. — ${total} / 20.00\n${bpmResults.map(r=>r.emoji).join('')}\n\nhttps://pitchd.net`; navigator.clipboard.writeText(t).catch(()=>{}); alert('Copied!'); }}
+                          className="flex-1 py-3 rounded-full border border-border text-white hover:bg-white hover:text-black transition-all tracking-widest uppercase text-xs"
+                        >Share</button>
+                        <button onClick={resetBpmGame} className="flex-1 py-3 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-xs">
+                          Again
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ── BPM ARTICLES ── */}
+              {homeView === 'bpm-articles' && (
+                <div key="bpm-articles" className="card-view-enter relative z-10 w-full">
+                  <button onClick={() => switchView('bpm-home')} className="flex items-center gap-2 text-text-muted hover:text-white transition-colors text-xs uppercase tracking-widest mb-8">
+                    <ArrowLeft className="size-3.5" /> Back
+                  </button>
+                  <h2 className="text-3xl sm:text-4xl font-display text-white mb-2 tracking-tighter leading-tight">Rhythm & BPM Guides</h2>
+                  <p className="text-text-muted text-sm mb-8">Articles on tempo training, beat recognition, and rhythmic ear development.</p>
+                  <div className="flex flex-col gap-4">
+                    {BPM_ARTICLES_DATA.map((article, i) => (
+                      <div key={i} className="p-6 rounded-2xl bg-white/5 border border-white/10">
+                        <span className="text-text-muted text-[10px] font-sans tracking-[0.2em] uppercase">{article.date}</span>
+                        <h3 className="text-lg font-display text-white leading-tight mt-1.5 mb-2">{article.title}</h3>
+                        <p className="text-[#a0a0a0] text-sm leading-relaxed">{article.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── BPM SCORING ── */}
+              {homeView === 'bpm-scoring' && (
+                <div key="bpm-scoring" className="card-view-enter relative z-10 w-full">
+                  <button onClick={() => switchView('bpm-home')} className="flex items-center gap-2 text-text-muted hover:text-white transition-colors text-xs uppercase tracking-widest mb-8">
+                    <ArrowLeft className="size-3.5" /> Back
+                  </button>
+                  <h2 className="text-3xl sm:text-4xl font-display text-white mb-2 tracking-tighter leading-tight">BPM Scoring</h2>
+                  <p className="text-[#a0a0a0] text-sm leading-relaxed mb-8">
+                    After listening to the metronome, you drag a slider to your BPM guess. Your score depends on how close you get.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    {BPM_SCORING_DATA.map(item => (
+                      <div key={item.label} className="bg-white/5 border border-white/10 rounded-xl p-5 flex items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-white font-display text-base mb-0.5">{item.label}</h3>
+                          <p className="text-[11px] text-text-muted leading-relaxed">{'desc' in item ? item.desc : item.range}</p>
+                        </div>
+                        <div className={`px-3 py-1.5 ${item.badge} font-bold font-mono text-sm rounded-lg shrink-0`}>{item.pts} pts</div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-8 pt-6 border-t border-white/5">
+                    <p className="text-[#666] text-xs text-center">A perfect 5-round BPM game yields exactly <span className="text-white font-bold">20 points</span>.</p>
+                  </div>
+                </div>
+              )}
+
               </div>
 
             </div>
@@ -774,14 +1038,38 @@ export default function GameClient() {
 
       </div>
 
+      {/* Top Mode Switcher (Home Page Only) */}
+      {gameState === 'home' && (
+        <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 flex items-center gap-1 px-1.5 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md shadow-lg animate-in slide-in-from-top-4 duration-700">
+          <button
+            onClick={() => switchView('menu')}
+            className={`px-5 py-2 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${!homeView.startsWith('bpm') ? 'bg-white text-black shadow-sm' : 'text-text-muted hover:text-white'}`}
+          >
+            Pitch
+          </button>
+          <button
+            onClick={() => switchView('bpm-home')}
+            className={`px-5 py-2 rounded-full text-[10px] uppercase tracking-[0.2em] font-bold transition-all ${homeView.startsWith('bpm') ? 'bg-white text-black shadow-sm' : 'text-text-muted hover:text-white'}`}
+          >
+            BPM
+          </button>
+        </div>
+      )}
+
       {/* Footer Pill (Home Page Only) */}
       {gameState === 'home' && (
         <div className="fixed bottom-6 sm:bottom-8 z-50 flex items-center gap-4 sm:gap-6 px-6 py-3 rounded-full bg-white/5 border border-white/10 backdrop-blur-md animate-in slide-in-from-bottom-8 duration-1000 shadow-2xl">
-          <button onClick={() => switchView('articles')} className="text-text-muted hover:text-white transition-colors text-[10px] sm:text-xs tracking-widest uppercase">
+          <button
+            onClick={() => switchView(homeView.startsWith('bpm') ? 'bpm-articles' : 'articles')}
+            className="text-text-muted hover:text-white transition-colors text-[10px] sm:text-xs tracking-widest uppercase"
+          >
             Articles
           </button>
           <div className="w-px h-3 bg-white/10" />
-          <button onClick={() => switchView('scoring')} className="text-text-muted hover:text-white transition-colors text-[10px] sm:text-xs tracking-widest uppercase">
+          <button
+            onClick={() => switchView(homeView.startsWith('bpm') ? 'bpm-scoring' : 'scoring')}
+            className="text-text-muted hover:text-white transition-colors text-[10px] sm:text-xs tracking-widest uppercase"
+          >
             Scoring
           </button>
           <div className="w-px h-4 bg-white/10" />

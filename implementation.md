@@ -52,13 +52,52 @@ Music icon near Undo button (desktop only, hover to show) reveals the full key�
 
 ---
 
+## 🔍 SEO
+
+### OG image route (Priority: High)
+No dynamic OG images exist — `og:image` currently points to a static asset. Add `/api/og` using `@vercel/og` (ImageResponse) to generate per-page images. Pitch home, BPM home, and article pages should each have a distinct image with the page title and pitchd. branding. This directly impacts click-through rate from social shares and Google Discover.
+
+### Canonical URLs missing on inner pages (Priority: Medium)
+`/bpm/scoring`, `/scoring`, `/bpm/articles`, `/articles` don't set `alternates.canonical` in their metadata. Google may see the in-card view and the standalone page as duplicates. Add `canonical` to each page's `generateMetadata`.
+
+### More BPM articles (Priority: Medium — SEO gap)
+3 BPM articles vs 6 pitch articles. Each article is an indexable landing page. Targets: "how to improve rhythm", "bpm counter online", "tap tempo test", "metronome ear training". New articles = new long-tail keyword surfaces.
+
+### HowTo schema on scoring pages (Priority: Low)
+`/scoring` and `/bpm/scoring` explain a process step by step — a perfect fit for `HowTo` JSON-LD. Replaces or supplements the current bare `FAQPage` schema. Google can show this in rich results.
+
+### Internal linking in articles (Priority: Low)
+Articles don't link to each other or back to the game. Add a "Related articles" section at the bottom of each article and an inline CTA to the game. This passes PageRank between article pages and improves crawl depth.
+
+---
+
 ## 🆕 Ideas / Future
 
+### OG image per page — `/api/og` (Priority: High)
+See SEO section above. Use `@vercel/og` with ImageResponse. Pitch home: purple accent + pitchd. wordmark + "5-round pitch game". BPM home: orange accent + bpm. wordmark. Article pages: article title + date. This is a one-afternoon implementation with a high SEO and social payoff.
+
+### "Daily already played" gate for pitch (Priority: Medium)
+BPM shows "Come back tomorrow" when daily is done. Pitch has no such gate — you can grind the same daily sequence infinitely and re-submit to the leaderboard. Check `pitchd_last_played` in `handleStart` and show a "You've played today's daily — come back tomorrow" message (with an Endless escape hatch). Keeps the daily leaderboard fair.
+
+### Confetti on perfect round / perfect game (Priority: Medium)
+A perfect BPM round (4.00 pts) or perfect pitch round (10.00 pts) or a perfect overall game deserves a moment. Use `canvas-confetti` (tiny, tree-shakeable). Trigger on `isNewBpmBest` or `finalTotal === 50` / `finalTotal === 20`.
+
 ### BPM leaderboard (Priority: Low)
-Show top BPM scores globally, similar to the pitch leaderboard. Requires `bpm_sessions` to store initials.
+Show top BPM scores globally, similar to the pitch leaderboard. Requires `bpm_sessions` to store initials. Add an initials input on the BPM final screen.
 
 ### Share BPM daily result (Priority: Low)
-Emoji grid share card for daily BPM (already have share for practice). Show date + BPM sequence context.
+Emoji grid share card for daily BPM. Show date + round-by-round emojis + total. Already have the share infrastructure from pitch — copy the pattern.
+
+### First-time onboarding tooltip (Priority: Low)
+New visitors see no instructions. A one-time dismissable banner or pulsing "?" button that reveals a 3-step how-to-play overlay (listen → guess → score). Store dismiss state in localStorage so it doesn't re-appear.
+
+### Pitch score history graph improvement (Priority: Low)
+The pitch bar chart scales to 50 pts but shows no axis labels or median line. Add a faint midpoint line at 25 pts and a "best" marker so users can track improvement at a glance.
+
+### Streak freeze mechanic (Priority: Low)
+Players lose streaks when they forget to play one day. A "streak freeze" (one per week, auto-granted) would reduce churn from casual users who miss a day and feel punished. Store `pitchd_streak_freeze` in localStorage.
+
+---
 
 ---
 

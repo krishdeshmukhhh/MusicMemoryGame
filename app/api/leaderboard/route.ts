@@ -32,7 +32,7 @@ export async function GET() {
     if (error) throw error;
 
     return NextResponse.json({ top_scores: data });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  } catch {
+    return NextResponse.json({ top_scores: [] });
   }
 }

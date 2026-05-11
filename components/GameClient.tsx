@@ -16,6 +16,16 @@ import { BPM_ARTICLES } from '@/lib/bpm-articles';
 
 type GameState = 'home' | 'listen' | 'play' | 'reveal' | 'results';
 type LeaderboardEntry = { initials: string, score: number, device_id: string, created_at: string };
+type HomeView = 'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring' | 'bpm-stats' | 'article' | 'bpm-article';
+
+function pathnameToView(p: string): HomeView {
+  if (p === '/bpm')          return 'bpm-home';
+  if (p === '/bpm/articles') return 'bpm-articles';
+  if (p === '/bpm/scoring')  return 'bpm-scoring';
+  if (p === '/articles')     return 'articles';
+  if (p === '/scoring')      return 'scoring';
+  return 'menu';
+}
 
 export default function GameClient() {
   const [gameState, setGameState] = useState<GameState>('home');
@@ -40,31 +50,12 @@ export default function GameClient() {
   const [activeArticleSlug, setActiveArticleSlug] = useState<string | null>(null);
   const [selectedPitchMode, setSelectedPitchMode] = useState<'daily' | 'endless'>('daily');
   const [showKeymap, setShowKeymap] = useState(false);
-  const [homeView, setHomeView] = useState<'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring' | 'bpm-stats' | 'article' | 'bpm-article'>(() => {
-    if (typeof window === 'undefined') return 'menu';
-    const p = window.location.pathname;
-    if (p === '/bpm')           return 'bpm-home';
-    if (p === '/bpm/articles')  return 'bpm-articles';
-    if (p === '/bpm/scoring')   return 'bpm-scoring';
-    if (p === '/articles')      return 'articles';
-    if (p === '/scoring')       return 'scoring';
-    return 'menu';
-  });
-  const [viewFading, setViewFading] = useState(false);
 
-  // usePathname triggers on real Next.js navigations (not our pushState calls).
-  // This syncs homeView when the router navigates to a GameClient route from
-  // outside (e.g. pressing Back from an article page).
+  // usePathname is SSR-aware — use it to seed the correct initial view so
+  // server and client render the same content and hydration succeeds.
   const pathname = usePathname();
-  useEffect(() => {
-    const view =
-      pathname === '/bpm'          ? 'bpm-home'     :
-      pathname === '/bpm/articles' ? 'bpm-articles' :
-      pathname === '/bpm/scoring'  ? 'bpm-scoring'  :
-      pathname === '/articles'     ? 'articles'     :
-      pathname === '/scoring'      ? 'scoring'      : 'menu';
-    setHomeView(view as typeof homeView);
-  }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [homeView, setHomeView] = useState<HomeView>(() => pathnameToView(pathname));
+  const [viewFading, setViewFading] = useState(false);
   const [cardHeight, setCardHeight] = useState<number | undefined>(undefined);
   const cardInnerRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +64,7 @@ export default function GameClient() {
     sliderBpm, setSliderBpm, results: bpmResults, pulseKey: bpmPulseKey,
     sliderMin, sliderMax, bpmGamesPlayed, bpmBest, bpmScoreHistory, bpmStreak, bpmDailyPlayed,
     hasReplayed, isReplaying, isNewBpmBest, replayTempo,
+    isPlaying: bpmIsPlaying, setIsPlaying: setBpmIsPlaying,
     startGame: startBpmGame, submitGuess: submitBpmGuess, nextRound: nextBpmRound, resetGame: resetBpmGame,
   } = useBpmGame();
 
@@ -169,22 +161,22 @@ export default function GameClient() {
 
   const [activeNoteIdx, setActiveNoteIdx] = useState<number | null>(null);
 
-  // Measure card content height on every view change for smooth transitions
+  // Measure card content height — ResizeObserver catches any content change
+  // (view switches, BPM phase changes, tap mode toggle, Reset button appearing, etc.)
   useEffect(() => {
-    if (!cardInnerRef.current) return;
-    const measure = () => {
-      const el = cardInnerRef.current;
-      if (el) setCardHeight(el.scrollHeight);
-    };
-    // Measure after the new view has rendered
+    const el = cardInnerRef.current;
+    if (!el) return;
+    const measure = () => setCardHeight(el.scrollHeight);
     const raf = requestAnimationFrame(measure);
-    // Also re-measure when images/fonts finish loading
-    const timer = setTimeout(measure, 350);
+    const timer = setTimeout(measure, 350); // fonts/images
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(timer);
+      ro.disconnect();
     };
-  }, [homeView, leaderboard, localStats, globalStats, bpmGlobalStats, bpmPhase, bpmScoreHistory]);
+  }, []);
 
   useEffect(() => {
     let storedId = localStorage.getItem('pitchd_device_id');
@@ -207,27 +199,19 @@ export default function GameClient() {
       setLocalStats({ gamesPlayed: 0, maxStreak: 0, scoreHistory: [] });
     }
 
-    fetch('/api/stats/global')
+    fetch('/api/stats')
       .then(r => r.json())
-      .then(data => setGlobalStats(data))
-      .catch(() => {});
-
-    fetch('/api/stats/bpm-global')
-      .then(r => r.json())
-      .then(data => setBpmGlobalStats(data))
+      .then(data => {
+        setGlobalStats({ games: data.games, notes: data.notes });
+        setBpmGlobalStats({ games: data.bpmGames });
+      })
       .catch(() => {});
   }, []);
 
   // Sync card view when user presses browser back/forward
   useEffect(() => {
     const onPop = () => {
-      const path = window.location.pathname;
-      const view: typeof homeView =
-        path === '/bpm'          ? 'bpm-home'     :
-        path === '/bpm/articles' ? 'bpm-articles' :
-        path === '/bpm/scoring'  ? 'bpm-scoring'  :
-        path === '/articles'     ? 'articles'     :
-        path === '/scoring'      ? 'scoring'      : 'menu';
+      const view = pathnameToView(window.location.pathname);
       setViewFading(true);
       setTimeout(() => {
         setHomeView(view);
@@ -258,14 +242,11 @@ export default function GameClient() {
     switchView('rank');
     try {
       const res = await fetch('/api/leaderboard');
-      if (!res.ok) {
-        const errData = await res.json();
-        throw new Error(errData.error || 'Failed to fetch leaderboard');
-      }
       const data = await res.json();
       if (data.top_scores) setLeaderboard(data.top_scores);
-    } catch (e) {
-      console.error("Leaderboard fetch error:", e);
+      else showToast('Leaderboard unavailable', 'error');
+    } catch {
+      showToast('Leaderboard unavailable', 'error');
     }
   };
 
@@ -718,6 +699,8 @@ export default function GameClient() {
                   hasReplayed={hasReplayed}
                   isReplaying={isReplaying}
                   isNewBpmBest={isNewBpmBest}
+                  isPlaying={bpmIsPlaying}
+                  setIsPlaying={setBpmIsPlaying}
                   replayTempo={replayTempo}
                   startGame={startBpmGame}
                   submitGuess={submitBpmGuess}

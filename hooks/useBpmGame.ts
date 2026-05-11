@@ -60,6 +60,7 @@ export function useBpmGame() {
   const [hasReplayed, setHasReplayed]         = useState(false);
   const [isReplaying, setIsReplaying]         = useState(false);
   const [isNewBpmBest, setIsNewBpmBest]       = useState(false);
+  const [isPlaying, setIsPlaying]             = useState(false);
 
   const ctxRef           = useRef<AudioContext | null>(null);
   const nextTimeRef      = useRef(0);
@@ -78,6 +79,8 @@ export function useBpmGame() {
   const targetBpmRef = useRef(0);
   targetBpmRef.current = targetBpm;
   roundRef.current   = round;
+  const isPlayingRef = useRef(false);
+  isPlayingRef.current = isPlaying;
 
   // ── Audio helpers ──────────────────────────────────────────────────────────
   const createClick = (ctx: AudioContext, time: number) => {
@@ -137,6 +140,7 @@ export function useBpmGame() {
     setPulseKey(0);
     setHasReplayed(false);
     setIsReplaying(false);
+    setIsPlaying(false);
     setPhase('listening');
     startMetronome(bpm);
 
@@ -160,7 +164,7 @@ export function useBpmGame() {
     setTimeout(() => {
       setIsReplaying(false);
       stopMetronome();
-      if (phaseRef.current === 'guessing') startMetronome(sliderBpmRef.current);
+      if (phaseRef.current === 'guessing' && isPlayingRef.current) startMetronome(sliderBpmRef.current);
     }, 2000);
   }, [hasReplayed, startMetronome, stopMetronome]);
 
@@ -184,8 +188,12 @@ export function useBpmGame() {
   // Keep metronome in sync with slider while guessing (skip during target replay)
   useEffect(() => {
     if (phase !== 'guessing' || isReplaying) return;
-    startMetronome(sliderBpm);
-  }, [phase, sliderBpm, startMetronome, isReplaying]);
+    if (isPlaying) {
+      startMetronome(sliderBpm);
+    } else {
+      stopMetronome();
+    }
+  }, [phase, sliderBpm, startMetronome, stopMetronome, isReplaying, isPlaying]);
 
   const submitGuess = useCallback((guessedBpm: number) => {
     stopMetronome();
@@ -284,7 +292,7 @@ export function useBpmGame() {
         stopCountdown();
         if (phaseRef.current === 'listening') setPhase('guessing');
       } else {
-        if (phaseRef.current === 'guessing') startMetronome(sliderBpmRef.current);
+        if (phaseRef.current === 'guessing' && isPlayingRef.current) startMetronome(sliderBpmRef.current);
       }
     };
     document.addEventListener('visibilitychange', handleVisibility);
@@ -301,6 +309,7 @@ export function useBpmGame() {
     results, pulseKey, sliderMin: SLIDER_MIN, sliderMax: SLIDER_MAX,
     bpmGamesPlayed, bpmBest, bpmScoreHistory, bpmStreak, bpmDailyPlayed,
     hasReplayed, isReplaying, isNewBpmBest,
+    isPlaying, setIsPlaying,
     replayTempo,
     startGame, submitGuess, nextRound, resetGame,
   };

@@ -25,6 +25,8 @@ type Props = {
   hasReplayed: boolean;
   isReplaying: boolean;
   isNewBpmBest: boolean;
+  isPlaying: boolean;
+  setIsPlaying: (v: boolean) => void;
   replayTempo: () => void;
   startGame: (mode: BpmMode) => void;
   submitGuess: (bpm: number) => void;
@@ -39,6 +41,7 @@ export default function BpmGame({
   results, pulseKey, sliderMin, sliderMax,
   bpmGamesPlayed, bpmBest, bpmScoreHistory, bpmStreak, bpmDailyPlayed,
   hasReplayed, isReplaying, isNewBpmBest,
+  isPlaying, setIsPlaying,
   replayTempo, startGame, submitGuess, nextRound, resetGame,
   bpmGlobalStats, switchView,
 }: Props) {
@@ -156,34 +159,48 @@ export default function BpmGame({
             <p className="text-[10px] text-text-muted uppercase tracking-[0.2em] mt-1">BPM</p>
           </div>
 
-          <div className="relative flex w-fit mx-auto p-1 rounded-full bg-white/5 border border-white/10">
+          <div className="relative flex w-full p-1 rounded-full bg-white/5 border border-white/10">
             <div
               className="absolute top-1 bottom-1 rounded-full bg-white shadow-sm pointer-events-none transition-transform duration-200 ease-in-out"
               style={{ left: '4px', width: 'calc(50% - 4px)', transform: tapInputMode === 'tap' ? 'translateX(100%)' : 'translateX(0)' }}
             />
             <button
               onClick={() => setTapInputMode('slider')}
-              className={`relative z-10 flex-1 px-3 py-1 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${tapInputMode === 'slider' ? 'text-black' : 'text-text-muted hover:text-white'}`}
+              className={`relative z-10 flex-1 py-1 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${tapInputMode === 'slider' ? 'text-black' : 'text-text-muted hover:text-white'}`}
             >Slider</button>
             <button
               onClick={() => { setTapInputMode('tap'); setTapTimes([]); }}
-              className={`relative z-10 flex-1 px-3 py-1 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${tapInputMode === 'tap' ? 'text-black' : 'text-text-muted hover:text-white'}`}
+              className={`relative z-10 flex-1 py-1 text-[10px] uppercase tracking-widest font-bold text-center transition-colors duration-150 ${tapInputMode === 'tap' ? 'text-black' : 'text-text-muted hover:text-white'}`}
             >Tap</button>
           </div>
 
           {tapInputMode === 'slider' ? (
             <div className="w-full flex flex-col gap-2">
-              <input
-                type="range"
-                min={sliderMin}
-                max={sliderMax}
-                step={1}
-                value={sliderBpm}
-                onChange={e => setSliderBpm(Number(e.target.value))}
-                disabled={isReplaying}
-                className="w-full accent-white h-1 cursor-pointer disabled:opacity-40"
-              />
-              <div className="flex justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSliderBpm(Math.max(sliderMin, sliderBpm - 1))}
+                  disabled={isReplaying}
+                  className="w-8 h-8 shrink-0 rounded-full border border-white/20 text-white flex items-center justify-center hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
+                  aria-label="Decrease BPM"
+                >−</button>
+                <input
+                  type="range"
+                  min={sliderMin}
+                  max={sliderMax}
+                  step={1}
+                  value={sliderBpm}
+                  onChange={e => setSliderBpm(Number(e.target.value))}
+                  disabled={isReplaying}
+                  className="flex-1 accent-white h-1 cursor-pointer disabled:opacity-40"
+                />
+                <button
+                  onClick={() => setSliderBpm(Math.min(sliderMax, sliderBpm + 1))}
+                  disabled={isReplaying}
+                  className="w-8 h-8 shrink-0 rounded-full border border-white/20 text-white flex items-center justify-center hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed text-base leading-none"
+                  aria-label="Increase BPM"
+                >+</button>
+              </div>
+              <div className="flex justify-between px-11">
                 <span className="text-text-faint text-[10px]">{sliderMin}</span>
                 <span className="text-text-faint text-[10px]">{sliderMax}</span>
               </div>
@@ -193,15 +210,13 @@ export default function BpmGame({
               <button
                 onPointerDown={() => {
                   const now = Date.now();
-                  setTapTimes(prev => {
-                    const updated = [...prev, now];
-                    if (updated.length >= 2) {
-                      const diffs = updated.slice(1).map((t, i) => t - updated[i]);
-                      const avg = diffs.reduce((a, b) => a + b, 0) / diffs.length;
-                      setSliderBpm(Math.max(sliderMin, Math.min(sliderMax, Math.round(60000 / avg))));
-                    }
-                    return updated;
-                  });
+                  const updated = [...tapTimes, now];
+                  setTapTimes(updated);
+                  if (updated.length >= 2) {
+                    const diffs = updated.slice(1).map((t, i) => t - updated[i]);
+                    const avg = diffs.reduce((a, b) => a + b, 0) / diffs.length;
+                    setSliderBpm(Math.max(sliderMin, Math.min(sliderMax, Math.round(60000 / avg))));
+                  }
                   if (tapResetTimerRef.current) clearTimeout(tapResetTimerRef.current);
                   tapResetTimerRef.current = setTimeout(() => setTapTimes([]), 2000);
                 }}
@@ -214,6 +229,14 @@ export default function BpmGame({
               )}
             </div>
           )}
+
+          <button
+            onClick={() => setIsPlaying(!isPlaying)}
+            disabled={isReplaying}
+            className="w-full py-3 rounded-full border border-white/20 text-white text-xs tracking-widest uppercase hover:bg-white/10 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            {isPlaying ? '⏸ Pause' : '▶ Play'}
+          </button>
 
           <div className="flex gap-2 w-full">
             <button

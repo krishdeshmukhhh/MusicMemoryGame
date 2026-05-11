@@ -62,7 +62,7 @@ export default function BpmPage() {
                 "name": "How is the BPM Guesser scored?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "Scoring is percentage-based relative to the target BPM: Perfect (within 1.5%) = 4 pts, Great (within 4%) = 3 pts, Good (within 8%) = 2 pts, Close (within 15%) = 1 pt, Miss (beyond 15%) = 0 pts. Maximum score over 5 rounds is 20 points."
+                  "text": "Scoring is percentage-based relative to the target BPM, with continuous decimal scoring within each tier. Perfect (within 3%) = 4.00–3.00 pts, Great (within 8%) = 3.00–2.00 pts, Good (within 15%) = 2.00–1.00 pts, Close (within 25%) = 1.00–0.00 pts, Miss (beyond 25%) = 0 pts. Maximum score over 5 rounds is 20.00 points."
                 }
               },
               {
@@ -93,11 +93,11 @@ export default function BpmPage() {
         </ol>
         <h2>Scoring Tiers</h2>
         <ul>
-          <li>Perfect — within 1.5% of the target BPM — 4 points</li>
-          <li>Great — within 4% — 3 points</li>
-          <li>Good — within 8% — 2 points</li>
-          <li>Close — within 15% — 1 point</li>
-          <li>Miss — beyond 15% — 0 points</li>
+          <li>Perfect — within 3% of the target BPM — up to 4.00 points</li>
+          <li>Great — within 8% — up to 3.00 points</li>
+          <li>Good — within 15% — up to 2.00 points</li>
+          <li>Close — within 25% — up to 1.00 point</li>
+          <li>Miss — beyond 25% — 0 points</li>
         </ul>
         <nav>
           <a href="/bpm/scoring">BPM Scoring Guide</a>

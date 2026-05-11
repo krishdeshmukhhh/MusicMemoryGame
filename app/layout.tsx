@@ -10,14 +10,14 @@ export const metadata: Metadata = {
     default: "pitchd. | Free Daily Perfect Pitch & Ear Training Game",
     template: "%s | pitchd."
   },
-  description: "Free daily ear training game. Listen to a 5-note melody and recreate it perfectly — then see where you rank globally. Can you hit the Top 1%? No sign-up needed.",
+  description: "Two free daily ear training games: recreate 4-note sequences on a piano to test your pitch memory, or match mystery tempos in the BPM Guesser. Rank globally — no sign-up needed.",
   keywords: ["perfect pitch test", "ear training game", "free ear training", "daily music puzzle", "pitch memory game", "interval recognition game", "music theory game", "relative pitch training", "perfect pitch", "auditory memory", "wordle for musicians", "bpm game", "bpm guesser", "tempo training", "beat recognition", "rhythm ear training", "pitchd"],
   authors: [{ name: "pitchd team" }],
   creator: "pitchd",
   publisher: "pitchd",
   openGraph: {
     title: "pitchd. | Free Daily Ear Training Game",
-    description: "The daily perfect pitch test. Listen to 5 rounds of notes, recreate them flawlessly, and rank globally. Free — no sign-up needed.",
+    description: "Free daily ear training — pitch memory game and BPM Guesser. Recreate note sequences, match mystery tempos, rank globally. No sign-up needed.",
     url: "https://pitchd.net",
     siteName: "pitchd.",
     locale: "en_US",

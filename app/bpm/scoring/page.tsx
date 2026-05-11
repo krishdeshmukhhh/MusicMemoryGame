@@ -3,7 +3,7 @@ import GameClient from '@/components/GameClient';
 
 export const metadata: Metadata = {
   title: 'BPM Scoring Guide — How Scoring Works | pitchd.',
-  description: 'How the BPM Guesser scoring works — continuous decimal scoring within each tier. Perfect within 1.5% scores 4.00 → 3.00 pts. Maximum 20.00 points across 5 rounds.',
+  description: 'How the BPM Guesser scoring works — continuous decimal scoring within each tier. Perfect (within 3%) scores 4.00 → 3.00 pts, Great (8%), Good (15%), Close (25%). Maximum 20.00 points across 5 rounds.',
   keywords: ['bpm scoring', 'bpm guesser score', 'tempo accuracy tiers', 'rhythm game scoring', 'pitchd bpm'],
   alternates: { canonical: 'https://pitchd.net/bpm/scoring' },
   openGraph: {

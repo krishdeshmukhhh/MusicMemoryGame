@@ -11,7 +11,7 @@ export default function Page() {
             "@context": "https://schema.org",
             "@type": "VideoGame",
             "name": "pitchd.",
-            "description": "A 5-round acoustic memory game to test your perfect pitch. Compete in the verified daily run or endless practice mode.",
+            "description": "Two free daily ear training games: a pitch memory game where you recreate 4-note sequences on a piano across 5 rounds (50 pts max), and a BPM Guesser where you match mystery tempos using a slider (20 pts max). Daily challenges, global leaderboard, no sign-up needed.",
             "genre": ["Musical", "Puzzle", "Educational"],
             "playMode": "SinglePlayer",
             "applicationCategory": "Game",
@@ -35,7 +35,7 @@ export default function Page() {
                 "name": "What is pitchd.?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "pitchd. is a free daily ear training and rhythm game. The Pitch game tests your pitch memory: listen to a 5-note melody and recreate it on an on-screen piano, ranked on a global leaderboard. The BPM game tests your sense of rhythm: hear a mystery tempo then use a slider to match the BPM exactly."
+                  "text": "pitchd. is a free daily ear training and rhythm game. The Pitch game tests your pitch memory: listen to a 4-note sequence and recreate it on an on-screen piano, ranked on a global leaderboard. The BPM Guesser tests your sense of rhythm: hear a mystery tempo then use a slider to match the BPM exactly."
                 }
               },
               {
@@ -59,7 +59,7 @@ export default function Page() {
                 "name": "What is the BPM Guesser game?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "The BPM Guesser is pitchd.'s rhythm game. A metronome plays at a mystery tempo for a few seconds, then stops. You use a slider to set what you think the BPM was and submit your guess. Your score is based on how close your guess is — within 1.5% earns a Perfect, within 4% a Great, within 8% a Good, within 15% Close, and beyond that a Miss. Play 5 rounds and see your total score."
+                  "text": "The BPM Guesser is pitchd.'s rhythm game. A metronome plays at a mystery tempo for a few seconds, then stops. You use a slider to set what you think the BPM was and submit your guess. Your score is based on how close your guess is — within 3% earns a Perfect, within 8% a Great, within 15% a Good, within 25% Close, and beyond that a Miss. Play 5 rounds and see your total score out of 20 points."
                 }
               },
               {
@@ -133,7 +133,7 @@ export default function Page() {
         <p>
           The BPM Guesser is pitchd.&apos;s rhythm game. A metronome plays at a mystery tempo,
           then stops. Use a slider to match the BPM you heard. Score across 5 rounds:
-          Perfect (≤1.5%), Great (≤4%), Good (≤8%), Close (≤15%), or Miss.
+          Perfect (≤3%), Great (≤8%), Good (≤15%), Close (≤25%), or Miss.
         </p>
         <nav aria-label="Site sections">
           <a href="/scoring">Pitch Scoring Details</a>

@@ -427,7 +427,7 @@ export const PITCH_ARTICLES: Record<string, ArticleData> = {
   'how-to-harmonize-by-ear': {
     title: 'How to Harmonize by Ear: A Step-by-Step Guide',
     description: 'Harmonizing by ear is a learnable skill — not a gift. Here\'s exactly how to develop the ability to add harmony to any melody in real time.',
-    date: '2026-05-20',
+    date: '2026-05-17',
     cta: 'Train your ear foundation with pitchd.',
     sections: [
       {
@@ -459,7 +459,7 @@ export const PITCH_ARTICLES: Record<string, ArticleData> = {
   'relative-pitch-exercises': {
     title: 'Relative Pitch Exercises: The 6 Best Drills for Developing Your Ear',
     description: 'Relative pitch is the most practical ear training skill you can build. These six exercises will develop it faster than passive listening or theory study alone.',
-    date: '2026-05-22',
+    date: '2026-05-19',
     cta: 'Put your relative pitch to the test with pitchd.',
     sections: [
       {

@@ -299,7 +299,7 @@ export const BPM_ARTICLES: Record<string, ArticleData> = {
   'how-to-improve-rhythm': {
     title: 'How to Improve Your Sense of Rhythm: 6 Evidence-Based Methods',
     description: 'Rhythm is trainable at any age. Here are six scientifically-backed methods for developing a stronger, more reliable rhythmic sense.',
-    date: '2026-05-21',
+    date: '2026-05-08',
     cta: 'Train your rhythm recognition with the BPM Guesser.',
     sections: [
       {
@@ -331,7 +331,7 @@ export const BPM_ARTICLES: Record<string, ArticleData> = {
   'best-bpm-for-studying': {
     title: 'The Best BPM for Studying: Does Music Tempo Affect Focus?',
     description: 'Research on music and cognitive performance reveals the ideal tempo ranges for concentration, memory retention, and deep work.',
-    date: '2026-05-23',
+    date: '2026-05-10',
     cta: 'Learn to recognize tempo by ear with the BPM Guesser.',
     sections: [
       {
@@ -363,7 +363,7 @@ export const BPM_ARTICLES: Record<string, ArticleData> = {
   'how-djs-count-bpm': {
     title: 'How DJs Count BPM: Beatmatching and Tempo Recognition Explained',
     description: 'Professional DJs develop exceptional BPM awareness through daily practice. Here\'s how they do it and how you can train the same skill.',
-    date: '2026-05-25',
+    date: '2026-05-12',
     cta: 'Train your BPM ear the way DJs do.',
     sections: [
       {
@@ -395,7 +395,7 @@ export const BPM_ARTICLES: Record<string, ArticleData> = {
   'what-is-a-good-bpm-for-music-production': {
     title: 'What Is a Good BPM for Music Production?',
     description: 'Choosing the right tempo is one of the most important production decisions you\'ll make. Here\'s how to think about BPM across different genres and contexts.',
-    date: '2026-05-27',
+    date: '2026-05-14',
     cta: 'Test your genre BPM instincts right now.',
     sections: [
       {
@@ -427,7 +427,7 @@ export const BPM_ARTICLES: Record<string, ArticleData> = {
   'how-to-transcribe-music-by-ear': {
     title: 'How to Transcribe Music by Ear: A Complete Beginner\'s Guide',
     description: 'Transcribing music by ear is the most powerful ear training exercise you can do. Here\'s how to start — even if you\'ve never done it before.',
-    date: '2026-05-29',
+    date: '2026-05-16',
     cta: 'Test your ear with the BPM Guesser and pitchd.',
     sections: [
       {
@@ -459,7 +459,7 @@ export const BPM_ARTICLES: Record<string, ArticleData> = {
   'ear-training-for-producers': {
     title: 'Ear Training for Producers: What to Practice and Why',
     description: 'Music producers need a different kind of ear training than classical musicians. Here\'s what to focus on and how to build it fast.',
-    date: '2026-05-31',
+    date: '2026-05-18',
     cta: 'Test your ear with the BPM Guesser.',
     sections: [
       {

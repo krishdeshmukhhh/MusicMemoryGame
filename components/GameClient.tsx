@@ -19,7 +19,7 @@ type LeaderboardEntry = { initials: string, score: number, device_id: string, cr
 type HomeView = 'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring' | 'bpm-stats' | 'article' | 'bpm-article';
 
 const VIEW_META: Partial<Record<HomeView, { title: string; description: string }>> = {
-  menu:         { title: 'pitchd. | Free Daily Perfect Pitch & Ear Training Game', description: 'Two free daily ear training games: recreate 4-note sequences on a piano to test your pitch memory, or match mystery tempos in the BPM Guesser. Rank globally — no sign-up needed.' },
+  menu:         { title: 'pitchd. | Free Daily Pitch Memory Game & Ear Training', description: 'Two free daily ear training games: recreate 4-note sequences on a piano to test your pitch memory, or match mystery tempos in the BPM Guesser. Rank globally — no sign-up needed.' },
   articles:     { title: 'Ear Training Articles | pitchd.', description: 'Guides on perfect pitch, interval recognition, relative pitch, and daily ear training routines — for musicians of all levels.' },
   scoring:      { title: 'How Scoring Works | pitchd.', description: 'How the pitchd. harmonic scoring engine awards points — from exact pitch matches to interval near-misses. Max 50 points across 5 rounds.' },
   rank:         { title: 'Global Leaderboard | pitchd.', description: 'See the top pitch recognition scores from players worldwide. Where do you rank today?' },

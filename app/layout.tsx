@@ -7,7 +7,7 @@ export const metadata: Metadata = {
     canonical: '/',
   },
   title: {
-    default: "pitchd. | Free Daily Perfect Pitch & Ear Training Game",
+    default: "pitchd. | Free Daily Pitch Memory Game & Ear Training",
     template: "%s | pitchd."
   },
   description: "Two free daily ear training games: recreate 4-note sequences on a piano to test your pitch memory, or match mystery tempos in the BPM Guesser. Rank globally — no sign-up needed.",

@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import GameClient from '@/components/GameClient';
+import { PITCH_ARTICLES } from '@/lib/pitch-articles';
 
 export const metadata: Metadata = {
   title: 'Ear Training & Perfect Pitch Guides | pitchd. Articles',
@@ -23,14 +24,9 @@ export const metadata: Metadata = {
   },
 };
 
-const ARTICLES = [
-  { slug: 'wordle-for-musicians',                  title: 'The Best Wordle-Like Games for Musicians' },
-  { slug: 'how-to-get-perfect-pitch-as-an-adult',  title: 'Can You Get Perfect Pitch as an Adult? What Science Says' },
-  { slug: 'best-ear-training-games-online',        title: 'The Best Free Ear Training Games Online (2026)' },
-  { slug: 'interval-recognition-training',         title: "Interval Recognition Training: The Complete Beginner's Guide" },
-  { slug: 'perfect-pitch-vs-relative-pitch',       title: 'Perfect Pitch vs. Relative Pitch: What is the difference?' },
-  { slug: 'how-to-train-your-ears',               title: 'The Ultimate Guide to Ear Training' },
-];
+const ARTICLES = Object.entries(PITCH_ARTICLES)
+  .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())
+  .map(([slug, article]) => ({ slug, title: article.title }));
 
 export default function ArticlesPage() {
   return (

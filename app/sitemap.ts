@@ -1,96 +1,30 @@
 import { MetadataRoute } from 'next';
+import { PITCH_ARTICLES } from '@/lib/pitch-articles';
+import { BPM_ARTICLES } from '@/lib/bpm-articles';
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  return [
-    {
-      url: 'https://pitchd.net',
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 1,
-    },
-    {
-      url: 'https://pitchd.net/articles',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    },
-    {
-      url: 'https://pitchd.net/articles/wordle-for-musicians',
-      lastModified: new Date('2026-05-03'),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://pitchd.net/articles/how-to-get-perfect-pitch-as-an-adult',
-      lastModified: new Date('2026-05-04'),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://pitchd.net/articles/best-ear-training-games-online',
-      lastModified: new Date('2026-05-01'),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://pitchd.net/articles/interval-recognition-training',
-      lastModified: new Date('2026-05-02'),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://pitchd.net/articles/perfect-pitch-vs-relative-pitch',
-      lastModified: new Date('2026-04-30'),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://pitchd.net/articles/how-to-train-your-ears',
-      lastModified: new Date('2026-04-28'),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://pitchd.net/scoring',
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://pitchd.net/bpm',
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.9,
-    },
-    {
-      url: 'https://pitchd.net/bpm/articles',
-      lastModified: new Date(),
-      changeFrequency: 'weekly',
-      priority: 0.7,
-    },
-    {
-      url: 'https://pitchd.net/bpm/articles/how-to-train-your-tempo-ear',
-      lastModified: new Date('2026-05-05'),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://pitchd.net/bpm/articles/science-of-groove',
-      lastModified: new Date('2026-05-06'),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://pitchd.net/bpm/articles/metronome-practice-internal-clock',
-      lastModified: new Date('2026-05-07'),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
-    {
-      url: 'https://pitchd.net/bpm/scoring',
-      lastModified: new Date(),
-      changeFrequency: 'monthly',
-      priority: 0.6,
-    },
+  const staticRoutes: MetadataRoute.Sitemap = [
+    { url: 'https://pitchd.net',             lastModified: new Date(), changeFrequency: 'daily',   priority: 1   },
+    { url: 'https://pitchd.net/bpm',         lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
+    { url: 'https://pitchd.net/articles',    lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
+    { url: 'https://pitchd.net/bpm/articles',lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.7 },
+    { url: 'https://pitchd.net/scoring',     lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
+    { url: 'https://pitchd.net/bpm/scoring', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
   ];
+
+  const pitchArticles: MetadataRoute.Sitemap = Object.entries(PITCH_ARTICLES).map(([slug, article]) => ({
+    url: `https://pitchd.net/articles/${slug}`,
+    lastModified: new Date(article.date),
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
+
+  const bpmArticles: MetadataRoute.Sitemap = Object.entries(BPM_ARTICLES).map(([slug, article]) => ({
+    url: `https://pitchd.net/bpm/articles/${slug}`,
+    lastModified: new Date(article.date),
+    changeFrequency: 'monthly',
+    priority: 0.6,
+  }));
+
+  return [...staticRoutes, ...pitchArticles, ...bpmArticles];
 }

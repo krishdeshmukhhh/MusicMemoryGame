@@ -18,6 +18,18 @@ type GameState = 'home' | 'listen' | 'play' | 'reveal' | 'results';
 type LeaderboardEntry = { initials: string, score: number, device_id: string, created_at: string };
 type HomeView = 'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring' | 'bpm-stats' | 'article' | 'bpm-article';
 
+const VIEW_META: Partial<Record<HomeView, { title: string; description: string }>> = {
+  menu:         { title: 'pitchd. | Free Daily Perfect Pitch & Ear Training Game', description: 'Two free daily ear training games: recreate 4-note sequences on a piano to test your pitch memory, or match mystery tempos in the BPM Guesser. Rank globally — no sign-up needed.' },
+  articles:     { title: 'Ear Training Articles | pitchd.', description: 'Guides on perfect pitch, interval recognition, relative pitch, and daily ear training routines — for musicians of all levels.' },
+  scoring:      { title: 'How Scoring Works | pitchd.', description: 'How the pitchd. harmonic scoring engine awards points — from exact pitch matches to interval near-misses. Max 50 points across 5 rounds.' },
+  rank:         { title: 'Global Leaderboard | pitchd.', description: 'See the top pitch recognition scores from players worldwide. Where do you rank today?' },
+  'bpm-home':   { title: 'BPM Guesser | Free Daily Tempo Training | pitchd.', description: 'Listen to a mystery tempo and guess the BPM. Free daily rhythm ear training game. No sign-up needed.' },
+  'bpm-articles':{ title: 'BPM & Rhythm Guides | pitchd.', description: 'Articles on tempo training, beat recognition, BPM ranges by genre, and rhythmic ear development.' },
+  'bpm-scoring':{ title: 'BPM Scoring Guide | pitchd.', description: 'How the BPM Guesser scoring tiers work — from Perfect (≤3% off) to Miss (>25% off). Max 20 points across 5 rounds.' },
+  'bpm-stats':  { title: 'Your BPM Stats | pitchd.', description: 'Track your BPM Guesser performance, best score, and daily streak.' },
+  stats:        { title: 'Your Pitch Stats | pitchd.', description: 'Track your pitch game performance, score history, and daily streak.' },
+};
+
 function pathnameToView(p: string): HomeView {
   if (p === '/bpm')          return 'bpm-home';
   if (p === '/bpm/articles') return 'bpm-articles';
@@ -93,42 +105,21 @@ export default function GameClient() {
 
 
   const ARTICLES_DATA = [
-    {
-      slug: 'wordle-for-musicians',
-      title: 'The Best Wordle-Like Games for Musicians',
-      description: 'Love Wordle? These daily music puzzle games give you the same satisfying loop — but for your ears.',
-      date: '2026-05-03',
-    },
-    {
-      slug: 'how-to-get-perfect-pitch-as-an-adult',
-      title: 'Can You Get Perfect Pitch as an Adult?',
-      description: 'The honest answer about learning absolute pitch after childhood — and what you can realistically achieve.',
-      date: '2026-05-04',
-    },
-    {
-      slug: 'best-ear-training-games-online',
-      title: 'The Best Free Ear Training Games Online (2026)',
-      description: 'A ranked list of the best free ear training games on the web — from daily pitch puzzles to interval drills.',
-      date: '2026-05-01',
-    },
-    {
-      slug: 'interval-recognition-training',
-      title: "Interval Recognition Training: The Complete Beginner's Guide",
-      description: 'Learn to identify all 12 musical intervals by ear using the song association method.',
-      date: '2026-05-02',
-    },
-    {
-      slug: 'perfect-pitch-vs-relative-pitch',
-      title: 'Perfect Pitch vs. Relative Pitch: What is the difference?',
-      description: 'A deep dive into absolute pitch recognition versus interval training, and how to test yourself.',
-      date: '2026-04-30',
-    },
-    {
-      slug: 'how-to-train-your-ears',
-      title: 'The Ultimate Guide to Ear Training',
-      description: 'Can you actually learn perfect pitch as an adult? We look at the science and the best daily routines.',
-      date: '2026-04-28',
-    },
+    { slug: 'relative-pitch-exercises',           title: 'Relative Pitch Exercises: The 6 Best Drills for Developing Your Ear', description: 'Relative pitch is the most practical ear training skill you can build. These six exercises will develop it faster than passive listening or theory study alone.', date: '2026-05-22' },
+    { slug: 'how-to-harmonize-by-ear',            title: 'How to Harmonize by Ear: A Step-by-Step Guide', description: 'Harmonizing by ear is a learnable skill — not a gift. Here\'s exactly how to develop the ability to add harmony to any melody in real time.', date: '2026-05-20' },
+    { slug: 'solfege-ear-training',               title: 'Solfège Ear Training: How Do-Re-Mi Actually Works', description: 'Solfège is more than a singing warm-up — it\'s one of the most powerful tools for developing relative pitch and harmonic understanding.', date: '2026-05-18' },
+    { slug: 'how-to-read-sheet-music-by-ear',     title: 'How to Read Sheet Music by Ear: Audiation and Inner Hearing', description: 'Truly reading music means hearing it in your head before you play it. Here\'s how to develop audiation.', date: '2026-05-16' },
+    { slug: 'ear-training-exercises-for-beginners', title: 'Ear Training Exercises for Beginners: Where to Start', description: 'If you\'re new to ear training, these exercises build the foundation for everything else — intervals, chords, and melody recognition.', date: '2026-05-14' },
+    { slug: 'how-to-improve-musical-memory',      title: 'How to Improve Your Musical Memory', description: 'Musical memory is a trainable skill that underpins sight-reading, improvisation, and ear training. Here\'s how to systematically strengthen it.', date: '2026-05-12' },
+    { slug: 'ear-training-for-guitar-players',    title: 'Ear Training for Guitar Players: The Essential Guide', description: 'Guitar-specific ear training unlocks improvisation, transcription, and the ability to play anything you can hear.', date: '2026-05-10' },
+    { slug: 'how-to-identify-chords-by-ear',      title: 'How to Identify Chords by Ear', description: 'Chord recognition is one of the most practical ear training skills you can develop. Here\'s how to start hearing harmony clearly.', date: '2026-05-08' },
+    { slug: 'why-cant-i-sing-in-tune',            title: "Why Can't I Sing in Tune? The Real Reasons and How to Fix Them", description: "Most people who can't sing in tune are not tone-deaf. Here's what's actually going wrong — and how pitch training can help.", date: '2026-05-06' },
+    { slug: 'how-to-get-perfect-pitch-as-an-adult', title: 'Can You Get Perfect Pitch as an Adult?', description: 'The honest answer about learning absolute pitch after childhood — and what you can realistically achieve.', date: '2026-05-04' },
+    { slug: 'wordle-for-musicians',               title: 'The Best Wordle-Like Games for Musicians', description: 'Love Wordle? These daily music puzzle games give you the same satisfying loop — but for your ears.', date: '2026-05-03' },
+    { slug: 'interval-recognition-training',      title: "Interval Recognition Training: The Complete Beginner's Guide", description: 'Learn to identify all 12 musical intervals by ear using the song association method.', date: '2026-05-02' },
+    { slug: 'best-ear-training-games-online',     title: 'The Best Free Ear Training Games Online (2026)', description: 'A ranked list of the best free ear training games on the web — from daily pitch puzzles to interval drills.', date: '2026-05-01' },
+    { slug: 'perfect-pitch-vs-relative-pitch',    title: 'Perfect Pitch vs. Relative Pitch: What is the difference?', description: 'A deep dive into absolute pitch recognition versus interval training, and how to test yourself.', date: '2026-04-30' },
+    { slug: 'how-to-train-your-ears',             title: 'The Ultimate Guide to Ear Training', description: 'Can you actually learn perfect pitch as an adult? We look at the science and the best daily routines.', date: '2026-04-28' },
   ];
 
   const BPM_SCORING_DATA_UPDATED = [
@@ -140,9 +131,21 @@ export default function GameClient() {
   ];
 
   const BPM_ARTICLES_DATA = [
-    { slug: 'how-to-train-your-tempo-ear', title: 'How to Train Your Tempo Ear', description: 'Internalize BPM and beat recognition with techniques used by professional drummers and producers.', date: '2026-05-05' },
-    { slug: 'science-of-groove', title: 'The Science of Groove: Why Tempo Perception Varies', description: 'Explore why some people naturally feel BPM better and what neuroscience tells us about rhythmic entrainment.', date: '2026-05-06' },
-    { slug: 'metronome-practice-internal-clock', title: 'Metronome Practice: Building a Reliable Internal Clock', description: "Most musicians use the metronome wrong. Here's how to use it to develop an internal sense of tempo that lasts.", date: '2026-05-07' },
+    { slug: 'ear-training-for-producers',              title: 'Ear Training for Producers: What to Practice and Why', description: "Music producers need a different kind of ear training than classical musicians. Here's what to focus on and how to build it fast.", date: '2026-05-31' },
+    { slug: 'how-to-transcribe-music-by-ear',          title: 'How to Transcribe Music by Ear: A Complete Beginner\'s Guide', description: 'Transcribing music by ear is the most powerful ear training exercise you can do. Here\'s how to start.', date: '2026-05-29' },
+    { slug: 'what-is-a-good-bpm-for-music-production', title: 'What Is a Good BPM for Music Production?', description: "Choosing the right tempo is one of the most important production decisions you'll make. Here's how to think about BPM.", date: '2026-05-27' },
+    { slug: 'how-djs-count-bpm',                       title: 'How DJs Count BPM: Beatmatching and Tempo Recognition Explained', description: 'Professional DJs develop exceptional BPM awareness through daily practice. Here\'s how they do it.', date: '2026-05-25' },
+    { slug: 'best-bpm-for-studying',                   title: 'The Best BPM for Studying: Does Music Tempo Affect Focus?', description: 'Research on music and cognitive performance reveals the ideal tempo ranges for concentration and deep work.', date: '2026-05-23' },
+    { slug: 'how-to-improve-rhythm',                   title: 'How to Improve Your Sense of Rhythm: 6 Evidence-Based Methods', description: 'Rhythm is trainable at any age. Here are six scientifically-backed methods for a stronger rhythmic sense.', date: '2026-05-21' },
+    { slug: 'tempo-vs-bpm-difference',                 title: 'Tempo vs. BPM: What\'s the Difference?', description: 'Tempo and BPM are often used interchangeably, but they are not exactly the same thing. Here\'s what sets them apart.', date: '2026-05-19' },
+    { slug: 'what-bpm-is-good-for-running',            title: 'What BPM Is Good for Running? The Science of Running Cadence', description: 'Research shows that music tempo directly affects running pace and endurance. Here\'s how to find the ideal BPM.', date: '2026-05-17' },
+    { slug: 'how-to-count-bpm-by-ear',                 title: 'How to Count BPM by Ear: A Step-by-Step Method', description: 'A practical guide to estimating a song\'s tempo without tools — using tapping, counting, and your internal clock.', date: '2026-05-15' },
+    { slug: 'how-to-find-bpm-of-a-song',               title: 'How to Find the BPM of Any Song', description: 'Three reliable methods for finding a song\'s BPM — from tap tempo tools to software analysis and ear estimation.', date: '2026-05-13' },
+    { slug: 'common-bpm-ranges-by-genre',              title: 'Common BPM Ranges by Genre: From Ambient to Drum and Bass', description: 'Every genre has a typical tempo range that defines its energy. Here\'s a complete breakdown of BPM ranges.', date: '2026-05-11' },
+    { slug: 'what-is-bpm-in-music',                    title: 'What Is BPM in Music? A Complete Guide to Tempo', description: 'BPM stands for beats per minute — the fundamental unit of musical tempo. Here\'s everything you need to know.', date: '2026-05-09' },
+    { slug: 'metronome-practice-internal-clock',       title: 'Metronome Practice: Building a Reliable Internal Clock', description: "Most musicians use the metronome wrong. Here's how to use it to develop an internal sense of tempo that lasts.", date: '2026-05-07' },
+    { slug: 'science-of-groove',                       title: 'The Science of Groove: Why Tempo Perception Varies', description: 'Explore why some people naturally feel BPM better and what neuroscience tells us about rhythmic entrainment.', date: '2026-05-06' },
+    { slug: 'how-to-train-your-tempo-ear',             title: 'How to Train Your Tempo Ear', description: 'Internalize BPM and beat recognition with techniques used by professional drummers and producers.', date: '2026-05-05' },
   ];
 
   const BPM_SCORING_DATA = BPM_SCORING_DATA_UPDATED;
@@ -221,6 +224,30 @@ export default function GameClient() {
     window.addEventListener('popstate', onPop);
     return () => window.removeEventListener('popstate', onPop);
   }, []);
+
+  // Sync document title and meta description with the active view for in-SPA navigation
+  useEffect(() => {
+    let title: string;
+    let description: string;
+
+    if (homeView === 'article' && activeArticleSlug && PITCH_ARTICLES[activeArticleSlug]) {
+      const a = PITCH_ARTICLES[activeArticleSlug];
+      title = `${a.title} | pitchd.`;
+      description = a.description;
+    } else if (homeView === 'bpm-article' && activeArticleSlug && BPM_ARTICLES[activeArticleSlug]) {
+      const a = BPM_ARTICLES[activeArticleSlug];
+      title = `${a.title} | pitchd.`;
+      description = a.description;
+    } else {
+      const meta = VIEW_META[homeView];
+      title = meta?.title ?? 'pitchd. | Free Daily Ear Training Game';
+      description = meta?.description ?? '';
+    }
+
+    document.title = title;
+    const descEl = document.querySelector<HTMLMetaElement>('meta[name="description"]');
+    if (descEl) descEl.setAttribute('content', description);
+  }, [homeView, activeArticleSlug]);
 
   // Reset BPM game when navigating away from the BPM view
   useEffect(() => {
@@ -719,7 +746,7 @@ export default function GameClient() {
                   </button>
                   <h2 className="text-3xl sm:text-4xl font-display text-white mb-2 tracking-tighter leading-tight">Rhythm & BPM Guides</h2>
                   <p className="text-text-muted text-sm mb-8">Articles on tempo training, beat recognition, and rhythmic ear development.</p>
-                  <div className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-4 max-h-[50vh] overflow-y-auto hide-scrollbar">
                     {BPM_ARTICLES_DATA.map((article) => (
                       <button
                         key={article.slug}

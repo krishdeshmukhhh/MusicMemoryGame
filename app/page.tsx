@@ -122,6 +122,15 @@ export default function Page() {
         </p>
         <h2>Ear Training Articles</h2>
         <nav>
+          <a href="/articles/relative-pitch-exercises">Relative Pitch Exercises: The 6 Best Drills</a>
+          <a href="/articles/how-to-harmonize-by-ear">How to Harmonize by Ear</a>
+          <a href="/articles/solfege-ear-training">Solfège Ear Training: How Do-Re-Mi Actually Works</a>
+          <a href="/articles/how-to-read-sheet-music-by-ear">How to Read Sheet Music by Ear</a>
+          <a href="/articles/ear-training-exercises-for-beginners">Ear Training Exercises for Beginners</a>
+          <a href="/articles/how-to-improve-musical-memory">How to Improve Your Musical Memory</a>
+          <a href="/articles/ear-training-for-guitar-players">Ear Training for Guitar Players</a>
+          <a href="/articles/how-to-identify-chords-by-ear">How to Identify Chords by Ear</a>
+          <a href="/articles/why-cant-i-sing-in-tune">Why Can&apos;t I Sing in Tune?</a>
           <a href="/articles/wordle-for-musicians">The Best Wordle-Like Games for Musicians</a>
           <a href="/articles/how-to-get-perfect-pitch-as-an-adult">Can You Get Perfect Pitch as an Adult?</a>
           <a href="/articles/best-ear-training-games-online">The Best Free Ear Training Games Online</a>

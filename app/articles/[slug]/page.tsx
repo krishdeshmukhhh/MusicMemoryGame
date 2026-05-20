@@ -85,6 +85,20 @@ export default async function ArticleContentPage({ params }: Props) {
           })
         }}
       />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "mainEntity": article.sections.map(section => ({
+              "@type": "Question",
+              "name": section.heading,
+              "acceptedAnswer": { "@type": "Answer", "text": section.body },
+            })),
+          })
+        }}
+      />
 
       <div className="w-full max-w-3xl mt-12 sm:mt-24 bg-surface-2 p-8 sm:p-16 rounded-3xl border border-border shadow-2xl relative">
 
@@ -123,6 +137,32 @@ export default async function ArticleContentPage({ params }: Props) {
               Play pitchd. Now
             </Link>
           </div>
+
+          {(() => {
+            const related = Object.entries(ARTICLES)
+              .filter(([s]) => s !== slug)
+              .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())
+              .slice(0, 3);
+            if (related.length === 0) return null;
+            return (
+              <div className="mt-12 pt-8 border-t border-white/10">
+                <h3 className="text-lg font-display text-white mb-6 tracking-tight">Related Articles</h3>
+                <div className="flex flex-col gap-4">
+                  {related.map(([s, a]) => (
+                    <Link
+                      key={s}
+                      href={`/articles/${s}`}
+                      className="group block p-5 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                    >
+                      <span className="text-[10px] text-text-muted tracking-[0.2em] uppercase">{a.date}</span>
+                      <h4 className="text-base font-display text-white group-hover:text-purple-400 transition-colors leading-tight mt-1">{a.title}</h4>
+                      <p className="text-xs text-[#a0a0a0] mt-1 leading-relaxed line-clamp-2">{a.description}</p>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </main>

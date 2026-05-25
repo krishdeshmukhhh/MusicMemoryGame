@@ -46,7 +46,7 @@ export default function BpmGame({
   bpmGlobalStats, switchView,
 }: Props) {
   const [selectedMode, setSelectedMode] = useState<BpmMode>('daily');
-  const [tapInputMode, setTapInputMode] = useState<'slider' | 'tap'>('slider');
+  const [tapInputMode, setTapInputMode] = useState<'slider' | 'tap'>('tap');
   const [tapTimes, setTapTimes] = useState<number[]>([]);
   const tapResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 

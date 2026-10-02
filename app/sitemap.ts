@@ -1,30 +1,29 @@
 import { MetadataRoute } from 'next';
 import { PITCH_ARTICLES } from '@/lib/pitch-articles';
 import { BPM_ARTICLES } from '@/lib/bpm-articles';
+import { articlePath, type ArticleKind } from '@/lib/articles';
+import type { ArticleData } from '@/lib/pitch-articles';
+
+const SITE = 'https://pitchd.net';
 
 export default function sitemap(): MetadataRoute.Sitemap {
+  const now = new Date();
   const staticRoutes: MetadataRoute.Sitemap = [
-    { url: 'https://pitchd.net',             lastModified: new Date(), changeFrequency: 'daily',   priority: 1   },
-    { url: 'https://pitchd.net/bpm',         lastModified: new Date(), changeFrequency: 'daily',   priority: 0.9 },
-    { url: 'https://pitchd.net/articles',    lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.8 },
-    { url: 'https://pitchd.net/bpm/articles',lastModified: new Date(), changeFrequency: 'weekly',  priority: 0.7 },
-    { url: 'https://pitchd.net/scoring',     lastModified: new Date(), changeFrequency: 'monthly', priority: 0.7 },
-    { url: 'https://pitchd.net/bpm/scoring', lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
+    { url: SITE,                     lastModified: now, changeFrequency: 'daily',   priority: 1   },
+    { url: `${SITE}/bpm`,            lastModified: now, changeFrequency: 'daily',   priority: 0.9 },
+    { url: `${SITE}/articles`,       lastModified: now, changeFrequency: 'weekly',  priority: 0.8 },
+    { url: `${SITE}/bpm/articles`,   lastModified: now, changeFrequency: 'weekly',  priority: 0.7 },
+    { url: `${SITE}/scoring`,        lastModified: now, changeFrequency: 'monthly', priority: 0.7 },
+    { url: `${SITE}/bpm/scoring`,    lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
   ];
 
-  const pitchArticles: MetadataRoute.Sitemap = Object.entries(PITCH_ARTICLES).map(([slug, article]) => ({
-    url: `https://pitchd.net/articles/${slug}`,
-    lastModified: new Date(article.date),
-    changeFrequency: 'monthly',
-    priority: 0.7,
-  }));
+  const articles = (kind: ArticleKind, all: Record<string, ArticleData>, priority: number): MetadataRoute.Sitemap =>
+    Object.entries(all).map(([slug, article]) => ({
+      url: `${SITE}${articlePath(kind, slug)}`,
+      lastModified: new Date(article.date),
+      changeFrequency: 'monthly',
+      priority,
+    }));
 
-  const bpmArticles: MetadataRoute.Sitemap = Object.entries(BPM_ARTICLES).map(([slug, article]) => ({
-    url: `https://pitchd.net/bpm/articles/${slug}`,
-    lastModified: new Date(article.date),
-    changeFrequency: 'monthly',
-    priority: 0.6,
-  }));
-
-  return [...staticRoutes, ...pitchArticles, ...bpmArticles];
+  return [...staticRoutes, ...articles('pitch', PITCH_ARTICLES, 0.7), ...articles('bpm', BPM_ARTICLES, 0.6)];
 }

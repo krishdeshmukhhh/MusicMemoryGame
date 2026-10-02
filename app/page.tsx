@@ -1,4 +1,16 @@
-import GameClient from '@/components/GameClient';
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import GameShell from '@/components/GameShell';
+import { articlePath, toArticleIndex } from '@/lib/articles';
+import { PITCH_ARTICLES } from '@/lib/pitch-articles';
+import { BPM_ARTICLES } from '@/lib/bpm-articles';
+
+export const metadata: Metadata = {
+  alternates: { canonical: 'https://pitchd.net' },
+};
+
+const PITCH_INDEX = toArticleIndex(PITCH_ARTICLES);
+const BPM_INDEX = toArticleIndex(BPM_ARTICLES);
 
 export default function Page() {
   return (
@@ -11,7 +23,7 @@ export default function Page() {
             "@context": "https://schema.org",
             "@type": "VideoGame",
             "name": "pitchd.",
-            "description": "Two free daily ear training games: a pitch memory game where you recreate 4-note sequences on a piano across 5 rounds (50 pts max), and a BPM Guesser where you match mystery tempos using a slider (20 pts max). Daily challenges, global leaderboard, no sign-up needed.",
+            "description": "Two free daily ear training games: a pitch memory game where you recreate 4-note sequences on a piano across 5 rounds (50 pts max), and a BPM Guesser where you match mystery tempos by tapping or using a slider (20 pts max). Daily challenges, global leaderboard, no sign-up needed.",
             "genre": ["Musical", "Puzzle", "Educational"],
             "playMode": "SinglePlayer",
             "applicationCategory": "Game",
@@ -100,7 +112,7 @@ export default function Page() {
       />
 
       {/* Semantic HTML visible to crawlers and screen readers, hidden visually */}
-      <div className="sr-only" aria-hidden="false">
+      <div className="sr-only">
         <h1>pitchd. — The Ultimate Perfect Pitch Memory Game</h1>
         <p>
           Most humans don&apos;t possess perfect pitch. pitchd. is a free, 5-round acoustic
@@ -121,40 +133,30 @@ export default function Page() {
           A perfect 5-round game yields exactly 50 points.
         </p>
         <h2>Ear Training Articles</h2>
-        <nav>
-          <a href="/articles/relative-pitch-exercises">Relative Pitch Exercises: The 6 Best Drills</a>
-          <a href="/articles/how-to-harmonize-by-ear">How to Harmonize by Ear</a>
-          <a href="/articles/solfege-ear-training">Solfège Ear Training: How Do-Re-Mi Actually Works</a>
-          <a href="/articles/how-to-read-sheet-music-by-ear">How to Read Sheet Music by Ear</a>
-          <a href="/articles/ear-training-exercises-for-beginners">Ear Training Exercises for Beginners</a>
-          <a href="/articles/how-to-improve-musical-memory">How to Improve Your Musical Memory</a>
-          <a href="/articles/ear-training-for-guitar-players">Ear Training for Guitar Players</a>
-          <a href="/articles/how-to-identify-chords-by-ear">How to Identify Chords by Ear</a>
-          <a href="/articles/why-cant-i-sing-in-tune">Why Can&apos;t I Sing in Tune?</a>
-          <a href="/articles/wordle-for-musicians">The Best Wordle-Like Games for Musicians</a>
-          <a href="/articles/how-to-get-perfect-pitch-as-an-adult">Can You Get Perfect Pitch as an Adult?</a>
-          <a href="/articles/best-ear-training-games-online">The Best Free Ear Training Games Online</a>
-          <a href="/articles/interval-recognition-training">Interval Recognition Training: Beginner&apos;s Guide</a>
-          <a href="/articles/perfect-pitch-vs-relative-pitch">Perfect Pitch vs. Relative Pitch</a>
-          <a href="/articles/how-to-train-your-ears">The Ultimate Guide to Ear Training</a>
+        <nav aria-label="Ear training articles">
+          {PITCH_INDEX.map(a => <Link key={a.slug} href={articlePath('pitch', a.slug)}>{a.title}</Link>)}
         </nav>
         <h2>BPM Guesser</h2>
         <p>
           The BPM Guesser is pitchd.&apos;s rhythm game. A metronome plays at a mystery tempo,
-          then stops. Use a slider to match the BPM you heard. Score across 5 rounds:
+          then stops. Tap along or use a slider to match the BPM you heard. Score across 5 rounds:
           Perfect (≤3%), Great (≤8%), Good (≤15%), Close (≤25%), or Miss.
         </p>
+        <h2>Rhythm &amp; BPM Guides</h2>
+        <nav aria-label="BPM articles">
+          {BPM_INDEX.map(a => <Link key={a.slug} href={articlePath('bpm', a.slug)}>{a.title}</Link>)}
+        </nav>
         <nav aria-label="Site sections">
-          <a href="/scoring">Pitch Scoring Details</a>
-          <a href="/articles">All Ear Training Articles</a>
-          <a href="/bpm">BPM Guesser Game</a>
-          <a href="/bpm/scoring">BPM Scoring Details</a>
-          <a href="/bpm/articles">Rhythm &amp; BPM Guides</a>
+          <Link href="/scoring">Pitch Scoring Details</Link>
+          <Link href="/articles">All Ear Training Articles</Link>
+          <Link href="/bpm">BPM Guesser Game</Link>
+          <Link href="/bpm/scoring">BPM Scoring Details</Link>
+          <Link href="/bpm/articles">Rhythm &amp; BPM Guides</Link>
         </nav>
       </div>
 
       {/* Interactive Game — Client Component */}
-      <GameClient />
+      <GameShell />
     </>
   );
 }

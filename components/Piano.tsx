@@ -123,7 +123,7 @@ export default function Piano({
       className="relative flex justify-center w-full max-w-3xl mx-auto overflow-x-auto hide-scrollbar px-4 pb-12 pt-4 select-none"
     >
       <div className="relative flex">
-        {KEYS.map((k, i) => {
+        {KEYS.map((k) => {
           const isWhite = k.type === 'white';
           const highlight = highlightedNotes.find(h => h.note === k.note);
           

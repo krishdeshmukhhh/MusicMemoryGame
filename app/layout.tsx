@@ -1,11 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
+
+export const viewport: Viewport = {
+  themeColor: '#000000',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://pitchd.net'),
-  alternates: {
-    canonical: '/',
-  },
   title: {
     default: "pitchd. | Free Daily Pitch Memory Game & Ear Training",
     template: "%s | pitchd."
@@ -31,10 +36,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    site: "@pitchd",
-    creator: "@pitchd",
     title: "pitchd. | Free Daily Ear Training Game",
-    description: "Can you land in the Top 1%? Recreate the 5-note melody, rank globally. Free ear training game.",
+    description: "Can you land in the Top 1%? Recreate the 4-note melody, rank globally. Free ear training game.",
     images: ["https://pitchd.net/og.png"],
   },
   robots: {
@@ -60,12 +63,8 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
-  other: {
-    'theme-color': '#000000',
-  },
 };
 
-import { Analytics } from "@vercel/analytics/next"
 
 export default function RootLayout({
   children,
@@ -83,15 +82,7 @@ export default function RootLayout({
               "@type": "WebSite",
               "name": "pitchd.",
               "url": "https://pitchd.net",
-              "description": "Free daily ear training and BPM games. Test your pitch memory and rhythm recognition — no sign-up needed.",
-              "potentialAction": {
-                "@type": "SearchAction",
-                "target": {
-                  "@type": "EntryPoint",
-                  "urlTemplate": "https://pitchd.net/articles?q={search_term_string}"
-                },
-                "query-input": "required name=search_term_string"
-              }
+              "description": "Free daily ear training and BPM games. Test your pitch memory and rhythm recognition — no sign-up needed."
             })
           }}
         />

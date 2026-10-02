@@ -1,8 +1,8 @@
 import { Metadata } from 'next';
-import GameClient from '@/components/GameClient';
+import GameShell from '@/components/GameShell';
 
 export const metadata: Metadata = {
-  title: 'How Scoring Works — Harmonic Scoring Explained | pitchd.',
+  title: 'How Scoring Works — Harmonic Scoring Explained',
   description: 'Understand the harmonic scoring algorithm behind pitchd. — partial credit for perfect octaves, 5ths, and 4ths. A perfect game is 50 points.',
   keywords: ['pitchd scoring', 'ear training scoring', 'harmonic scoring', 'perfect pitch game scoring', 'pitch game points'],
   alternates: {
@@ -13,6 +13,7 @@ export const metadata: Metadata = {
     description: 'Harmonic scoring: partial credit for octaves, perfect 5ths, 4ths. Max 50 points across 5 rounds.',
     url: 'https://pitchd.net/scoring',
     type: 'article',
+    images: [{ url: 'https://pitchd.net/api/og?title=How+Scoring+Works&kicker=Harmonic+scoring', width: 1200, height: 630 }],
   },
 };
 
@@ -54,7 +55,7 @@ export default function ScoringPage() {
           })
         }}
       />
-      <GameClient />
+      <GameShell />
     </>
   );
 }

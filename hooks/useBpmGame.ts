@@ -1,51 +1,42 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { getDailyDateString, getDailyBpmSequence } from '@/lib/seed';
-
-const BPM_EASY   = [60, 70, 80, 90, 100, 110, 120];
-const BPM_MEDIUM = [72, 85, 96, 108, 116, 128];
-const BPM_HARD   = [67, 78, 93, 107, 113, 137, 152];
-export const ALL_BPMS = [...BPM_EASY, ...BPM_MEDIUM, ...BPM_HARD];
-
-const LISTEN_SECONDS = 4;
-const SLIDER_MIN     = 40;
-const SLIDER_MAX     = 200;
-const SLIDER_DEFAULT = 100;
-
-function getDifficulty(bpm: number): 'easy' | 'medium' | 'hard' {
-  if ((BPM_EASY as number[]).includes(bpm)) return 'easy';
-  if ((BPM_MEDIUM as number[]).includes(bpm)) return 'medium';
-  return 'hard';
-}
-
-function scoreGuess(target: number, guess: number) {
-  const pct = (Math.abs(target - guess) / target) * 100;
-  const round2 = (n: number) => Math.round(n * 100) / 100;
-
-  // Wider tiers — boundaries are clean integers, interpolation is linear within each.
-  if (pct <= 3)  return { label: 'Perfect', emoji: '🟩', points: round2(4 - pct / 3),              pct: round2(pct) };
-  if (pct <= 8)  return { label: 'Great',   emoji: '🟨', points: round2(3 - (pct - 3) / 5),        pct: round2(pct) };
-  if (pct <= 15) return { label: 'Good',    emoji: '🟧', points: round2(2 - (pct - 8) / 7),        pct: round2(pct) };
-  if (pct <= 25) return { label: 'Close',   emoji: '🟫', points: round2(1 - (pct - 15) / 10),      pct: round2(pct) };
-  return               { label: 'Miss',    emoji: '🟥', points: 0,                                 pct: round2(pct) };
-}
+import { getDailyBpmSequence } from '@/lib/seed';
+import { getDailyDateString, liveStreak, nextStreak } from '@/lib/daily';
+import {
+  ALL_BPMS, BPM_ROUNDS, LISTEN_SECONDS, SLIDER_MIN, SLIDER_MAX, SLIDER_DEFAULT,
+  getDifficulty, scoreGuess, type BpmTier, type Difficulty,
+} from '@/lib/bpm';
+import { encodeBpmGrid } from '@/lib/share';
 
 export type RoundResult = {
   targetBpm: number;
   guessedBpm: number;
-  label: string;
+  label: BpmTier;
   emoji: string;
   points: number;
   pct: number;
-  difficulty: 'easy' | 'medium' | 'hard';
+  difficulty: Difficulty;
 };
 
 export type BpmPhase = 'idle' | 'listening' | 'guessing' | 'result' | 'final';
 export type BpmMode  = 'practice' | 'daily';
+export type BpmDailyResult = { date: string; total: number; grid: string };
+
+const randomBpm = () => ALL_BPMS[Math.floor(Math.random() * ALL_BPMS.length)];
+
+function readDailyResult(today: string): BpmDailyResult | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('bpm_daily_result') || 'null');
+    return parsed && parsed.date === today ? parsed : null;
+  } catch {
+    return null;
+  }
+}
 
 export function useBpmGame() {
   const [phase, setPhase]                     = useState<BpmPhase>('idle');
+  const [mode, setMode]                       = useState<BpmMode>('practice');
   const [round, setRound]                     = useState(1);
   const [targetBpm, setTargetBpm]             = useState(0);
   const [countdown, setCountdown]             = useState(LISTEN_SECONDS);
@@ -56,6 +47,7 @@ export function useBpmGame() {
   const [bpmBest, setBpmBest]                 = useState(0);
   const [bpmScoreHistory, setBpmScoreHistory] = useState<number[]>([]);
   const [bpmStreak, setBpmStreak]             = useState(0);
+  const [bpmDailyResult, setBpmDailyResult]   = useState<BpmDailyResult | null>(null);
   const [bpmDailyPlayed, setBpmDailyPlayed]   = useState(false);
   const [hasReplayed, setHasReplayed]         = useState(false);
   const [isReplaying, setIsReplaying]         = useState(false);
@@ -66,21 +58,25 @@ export function useBpmGame() {
   const nextTimeRef      = useRef(0);
   const schedulerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
   const countdownRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const replayTimerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pulseTimeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
   const dailySequenceRef = useRef<number[]>([]);
   const modeRef          = useRef<BpmMode>('practice');
-  const roundRef         = useRef(1);
+  const resultsRef       = useRef<RoundResult[]>([]);
 
-  // Refs for stable access in callbacks/effects
+  // Latest-value refs for timers/listeners. Synced after commit (never during render).
   const phaseRef     = useRef<BpmPhase>('idle');
-  phaseRef.current   = phase;
   const sliderBpmRef = useRef(SLIDER_DEFAULT);
-  sliderBpmRef.current = sliderBpm;
   const targetBpmRef = useRef(0);
-  targetBpmRef.current = targetBpm;
-  roundRef.current   = round;
+  const roundRef     = useRef(1);
   const isPlayingRef = useRef(false);
-  isPlayingRef.current = isPlaying;
+  useEffect(() => {
+    phaseRef.current     = phase;
+    sliderBpmRef.current = sliderBpm;
+    targetBpmRef.current = targetBpm;
+    roundRef.current     = round;
+    isPlayingRef.current = isPlaying;
+  });
 
   // ── Audio helpers ──────────────────────────────────────────────────────────
   const createClick = (ctx: AudioContext, time: number) => {
@@ -134,6 +130,7 @@ export function useBpmGame() {
 
   // ── Round lifecycle ────────────────────────────────────────────────────────
   const startNewRound = useCallback((bpm: number) => {
+    stopCountdown();
     setTargetBpm(bpm);
     setSliderBpm(SLIDER_DEFAULT);
     setCountdown(LISTEN_SECONDS);
@@ -161,7 +158,7 @@ export function useBpmGame() {
     setHasReplayed(true);
     setIsReplaying(true);
     startMetronome(targetBpmRef.current);
-    setTimeout(() => {
+    replayTimerRef.current = setTimeout(() => {
       setIsReplaying(false);
       stopMetronome();
       if (phaseRef.current === 'guessing' && isPlayingRef.current) startMetronome(sliderBpmRef.current);
@@ -170,17 +167,18 @@ export function useBpmGame() {
 
   const startGame = useCallback((gameMode: BpmMode = 'practice') => {
     modeRef.current = gameMode;
+    setMode(gameMode);
     setRound(1);
+    resultsRef.current = [];
     setResults([]);
     setIsNewBpmBest(false);
 
     let bpm: number;
     if (gameMode === 'daily') {
-      const dateStr = getDailyDateString();
-      dailySequenceRef.current = getDailyBpmSequence(dateStr, ALL_BPMS);
+      dailySequenceRef.current = getDailyBpmSequence(getDailyDateString(), ALL_BPMS);
       bpm = dailySequenceRef.current[0];
     } else {
-      bpm = ALL_BPMS[Math.floor(Math.random() * ALL_BPMS.length)];
+      bpm = randomBpm();
     }
     startNewRound(bpm);
   }, [startNewRound]);
@@ -195,92 +193,106 @@ export function useBpmGame() {
     }
   }, [phase, sliderBpm, startMetronome, stopMetronome, isReplaying, isPlaying]);
 
+  const recordFinishedGame = useCallback((all: RoundResult[]) => {
+    try {
+      const total = Math.round(all.reduce((s, r) => s + r.points, 0) * 100) / 100;
+
+      const best = parseFloat(localStorage.getItem('bpm_best') || '0');
+      if (total > best) {
+        localStorage.setItem('bpm_best', String(total));
+        setBpmBest(total);
+        setIsNewBpmBest(true);
+      }
+
+      const newCount = parseInt(localStorage.getItem('bpm_games_played') || '0', 10) + 1;
+      localStorage.setItem('bpm_games_played', String(newCount));
+      setBpmGamesPlayed(newCount);
+
+      const history = JSON.parse(localStorage.getItem('bpm_score_history') || '[]') as number[];
+      history.push(total);
+      localStorage.setItem('bpm_score_history', JSON.stringify(history.slice(-100)));
+      setBpmScoreHistory(history);
+
+      if (modeRef.current === 'daily') {
+        const today = getDailyDateString();
+        const lastDailyDate = localStorage.getItem('bpm_last_daily_date');
+        if (lastDailyDate !== today) {
+          const cur = parseInt(localStorage.getItem('bpm_daily_streak') || '0', 10);
+          const newStreak = nextStreak(lastDailyDate, today, cur);
+          localStorage.setItem('bpm_daily_streak', String(newStreak));
+          localStorage.setItem('bpm_last_daily_date', today);
+          setBpmStreak(newStreak);
+
+          const dailyResult: BpmDailyResult = { date: today, total, grid: encodeBpmGrid(all) };
+          localStorage.setItem('bpm_daily_result', JSON.stringify(dailyResult));
+          setBpmDailyResult(dailyResult);
+          setBpmDailyPlayed(true);
+        }
+      }
+    } catch { /* localStorage unavailable */ }
+  }, []);
+
   const submitGuess = useCallback((guessedBpm: number) => {
+    if (phaseRef.current !== 'guessing') return; // ignore double-taps on Lock In
+    phaseRef.current = 'result';
     stopMetronome();
     const currentTarget = targetBpmRef.current;
-    setResults(prev => {
-      const result: RoundResult = {
-        targetBpm: currentTarget,
-        guessedBpm,
-        ...scoreGuess(currentTarget, guessedBpm),
-        difficulty: getDifficulty(currentTarget),
-      };
-      const next = [...prev, result];
-
-      if (next.length >= 5) {
-        setPhase('final');
-        try {
-          const total        = next.reduce((s, r) => s + r.points, 0);
-          const roundedTotal = Math.round(total * 100) / 100;
-
-          const best = parseFloat(localStorage.getItem('bpm_best') || '0');
-          if (roundedTotal > best) {
-            localStorage.setItem('bpm_best', String(roundedTotal));
-            setBpmBest(roundedTotal);
-            setIsNewBpmBest(true);
-          }
-
-          const newCount = parseInt(localStorage.getItem('bpm_games_played') || '0', 10) + 1;
-          localStorage.setItem('bpm_games_played', String(newCount));
-          setBpmGamesPlayed(newCount);
-
-          const history = JSON.parse(localStorage.getItem('bpm_score_history') || '[]') as number[];
-          history.push(roundedTotal);
-          localStorage.setItem('bpm_score_history', JSON.stringify(history));
-          setBpmScoreHistory(history);
-
-          if (modeRef.current === 'daily') {
-            const today         = getDailyDateString();
-            const lastDailyDate = localStorage.getItem('bpm_last_daily_date');
-            if (lastDailyDate !== today) {
-              const yd = new Date();
-              yd.setDate(yd.getDate() - 1);
-              const yesterday = `${yd.getFullYear()}-${String(yd.getMonth() + 1).padStart(2, '0')}-${String(yd.getDate()).padStart(2, '0')}`;
-              const cur     = parseInt(localStorage.getItem('bpm_daily_streak') || '0', 10);
-              const newStrk = lastDailyDate === yesterday ? cur + 1 : 1;
-              localStorage.setItem('bpm_daily_streak', String(newStrk));
-              localStorage.setItem('bpm_last_daily_date', today);
-              setBpmStreak(newStrk);
-              setBpmDailyPlayed(true);
-            }
-          }
-        } catch { /* localStorage unavailable */ }
-      } else {
-        setPhase('result');
-      }
-      return next;
-    });
-  }, [stopMetronome]);
+    const result: RoundResult = {
+      targetBpm: currentTarget,
+      guessedBpm,
+      ...scoreGuess(currentTarget, guessedBpm),
+      difficulty: getDifficulty(currentTarget),
+    };
+    const next = [...resultsRef.current, result];
+    resultsRef.current = next;
+    setResults(next);
+    if (next.length >= BPM_ROUNDS) {
+      setPhase('final');
+      recordFinishedGame(next);
+    } else {
+      setPhase('result');
+    }
+  }, [stopMetronome, recordFinishedGame]);
 
   const nextRound = useCallback(() => {
     const nextRoundNum = roundRef.current + 1;
     setRound(nextRoundNum);
     const bpm = modeRef.current === 'daily'
-      ? (dailySequenceRef.current[nextRoundNum - 1] ?? ALL_BPMS[Math.floor(Math.random() * ALL_BPMS.length)])
-      : ALL_BPMS[Math.floor(Math.random() * ALL_BPMS.length)];
+      ? (dailySequenceRef.current[nextRoundNum - 1] ?? randomBpm())
+      : randomBpm();
     startNewRound(bpm);
   }, [startNewRound]);
 
   const resetGame = useCallback(() => {
     stopMetronome();
     stopCountdown();
+    if (replayTimerRef.current) clearTimeout(replayTimerRef.current);
     setPhase('idle');
     setRound(1);
+    resultsRef.current = [];
     setResults([]);
     setSliderBpm(SLIDER_DEFAULT);
     setIsNewBpmBest(false);
     setHasReplayed(false);
     setIsReplaying(false);
+    setIsPlaying(false);
   }, [stopMetronome, stopCountdown]);
 
   // ── localStorage hydration ─────────────────────────────────────────────────
+  // Runs after mount on purpose: reading localStorage during render would make the
+  // server and client HTML differ and break hydration.
   useEffect(() => {
     try {
+      /* eslint-disable react-hooks/set-state-in-effect */
+      const today = getDailyDateString();
+      const lastDaily = localStorage.getItem('bpm_last_daily_date');
       setBpmGamesPlayed(parseInt(localStorage.getItem('bpm_games_played') || '0', 10));
       setBpmBest(parseFloat(localStorage.getItem('bpm_best') || '0'));
       setBpmScoreHistory(JSON.parse(localStorage.getItem('bpm_score_history') || '[]'));
-      setBpmStreak(parseInt(localStorage.getItem('bpm_daily_streak') || '0', 10));
-      setBpmDailyPlayed(localStorage.getItem('bpm_last_daily_date') === getDailyDateString());
+      setBpmStreak(liveStreak(lastDaily, today, parseInt(localStorage.getItem('bpm_daily_streak') || '0', 10)));
+      setBpmDailyPlayed(lastDaily === today);
+      setBpmDailyResult(readDailyResult(today));
+      /* eslint-enable react-hooks/set-state-in-effect */
     } catch { /* localStorage unavailable */ }
   }, []);
 
@@ -302,12 +314,13 @@ export function useBpmGame() {
   useEffect(() => () => {
     stopMetronome();
     stopCountdown();
+    if (replayTimerRef.current) clearTimeout(replayTimerRef.current);
   }, [stopMetronome, stopCountdown]);
 
   return {
-    phase, round, targetBpm, countdown, sliderBpm, setSliderBpm,
+    phase, mode, round, targetBpm, countdown, sliderBpm, setSliderBpm,
     results, pulseKey, sliderMin: SLIDER_MIN, sliderMax: SLIDER_MAX,
-    bpmGamesPlayed, bpmBest, bpmScoreHistory, bpmStreak, bpmDailyPlayed,
+    bpmGamesPlayed, bpmBest, bpmScoreHistory, bpmStreak, bpmDailyPlayed, bpmDailyResult,
     hasReplayed, isReplaying, isNewBpmBest,
     isPlaying, setIsPlaying,
     replayTempo,

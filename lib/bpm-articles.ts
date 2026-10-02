@@ -1,11 +1,4 @@
-export type ArticleSection = { heading: string; body: string };
-export type ArticleData = {
-  title: string;
-  description: string;
-  date: string;
-  sections: ArticleSection[];
-  cta: string;
-};
+import type { ArticleData } from './pitch-articles';
 
 export const BPM_ARTICLES: Record<string, ArticleData> = {
   'how-to-train-your-tempo-ear': {

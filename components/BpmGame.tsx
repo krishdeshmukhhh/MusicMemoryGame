@@ -1,50 +1,31 @@
 "use client";
 
 import { useRef, useState } from 'react';
-import { BarChart2, X } from 'lucide-react';
+import { track } from '@vercel/analytics';
+import { BarChart2, Share2, X } from 'lucide-react';
 import { showToast } from '@/components/Toast';
-import type { BpmPhase, BpmMode, RoundResult } from '@/hooks/useBpmGame';
-
-type HomeView = 'menu' | 'stats' | 'articles' | 'scoring' | 'rank' | 'bpm-home' | 'bpm-articles' | 'bpm-scoring' | 'bpm-stats' | 'article' | 'bpm-article';
+import NextPuzzleCountdown from '@/components/NextPuzzleCountdown';
+import type { useBpmGame, BpmMode } from '@/hooks/useBpmGame';
+import type { HomeView } from '@/components/GameClient';
+import { bpmFromTaps } from '@/lib/bpm';
+import { getDailyDateString, getPuzzleNumber } from '@/lib/daily';
+import { buildShareText, encodeBpmGrid, shareResult } from '@/lib/share';
 
 type Props = {
-  phase: BpmPhase;
-  round: number;
-  countdown: number;
-  sliderBpm: number;
-  setSliderBpm: (n: number) => void;
-  results: RoundResult[];
-  pulseKey: number;
-  sliderMin: number;
-  sliderMax: number;
-  bpmGamesPlayed: number;
-  bpmBest: number;
-  bpmScoreHistory: number[];
-  bpmStreak: number;
-  bpmDailyPlayed: boolean;
-  hasReplayed: boolean;
-  isReplaying: boolean;
-  isNewBpmBest: boolean;
-  isPlaying: boolean;
-  setIsPlaying: (v: boolean) => void;
-  replayTempo: () => void;
-  startGame: (mode: BpmMode) => void;
-  submitGuess: (bpm: number) => void;
-  nextRound: () => void;
-  resetGame: () => void;
+  game: ReturnType<typeof useBpmGame>;
   bpmGlobalStats: { games: number } | null;
   switchView: (target: HomeView) => void;
 };
 
-export default function BpmGame({
-  phase, round, countdown, sliderBpm, setSliderBpm,
-  results, pulseKey, sliderMin, sliderMax,
-  bpmGamesPlayed, bpmBest, bpmScoreHistory, bpmStreak, bpmDailyPlayed,
-  hasReplayed, isReplaying, isNewBpmBest,
-  isPlaying, setIsPlaying,
-  replayTempo, startGame, submitGuess, nextRound, resetGame,
-  bpmGlobalStats, switchView,
-}: Props) {
+export default function BpmGame({ game, bpmGlobalStats, switchView }: Props) {
+  const {
+    phase, mode, round, sliderBpm, setSliderBpm,
+    results, pulseKey, sliderMin, sliderMax,
+    bpmBest, bpmStreak, bpmDailyPlayed, bpmDailyResult,
+    hasReplayed, isReplaying, isNewBpmBest,
+    isPlaying, setIsPlaying,
+    replayTempo, startGame, submitGuess, nextRound, resetGame,
+  } = game;
   const [selectedMode, setSelectedMode] = useState<BpmMode>('daily');
   const [tapInputMode, setTapInputMode] = useState<'slider' | 'tap'>('tap');
   const [tapTimes, setTapTimes] = useState<number[]>([]);
@@ -52,6 +33,34 @@ export default function BpmGame({
 
   const scoreColor = { Perfect: 'text-green-400', Great: 'text-yellow-400', Good: 'text-orange-400', Close: 'text-stone-400', Miss: 'text-red-400' };
   const diffBadge  = { easy: 'bg-green-500/20 text-green-400', medium: 'bg-yellow-500/20 text-yellow-400', hard: 'bg-red-500/20 text-red-400' };
+
+  const share = async (text: string, source: string) => {
+    const outcome = await shareResult(text);
+    if (outcome === 'copied') showToast('Result copied — paste it anywhere!');
+    if (outcome === 'failed') showToast('Couldn’t share — try again', 'error');
+    if (outcome === 'shared' || outcome === 'copied') track('share', { game: 'bpm', source, method: outcome });
+  };
+
+  const shareFinal = () => {
+    const total = Math.round(results.reduce((s, r) => s + r.points, 0) * 100) / 100;
+    share(buildShareText({
+      game: 'bpm', score: total, dateStr: getDailyDateString(), daily: mode === 'daily',
+      grid: encodeBpmGrid(results), streak: bpmStreak,
+    }), 'results');
+  };
+
+  const shareDaily = () => {
+    if (!bpmDailyResult) return;
+    share(buildShareText({
+      game: 'bpm', score: bpmDailyResult.total, dateStr: bpmDailyResult.date, daily: true,
+      grid: bpmDailyResult.grid, streak: bpmStreak,
+    }), 'menu');
+  };
+
+  const handleStart = (m: BpmMode) => {
+    track('game_start', { game: 'bpm', mode: m });
+    startGame(m);
+  };
 
   return (
     <div key={`bpm-${phase}-${results.length}`} className="card-view-enter relative z-10 w-full">
@@ -93,12 +102,30 @@ export default function BpmGame({
           </div>
 
           {selectedMode === 'daily' && bpmDailyPlayed ? (
-            <div className="w-full py-4 rounded-full border border-white/10 text-center text-text-muted text-xs tracking-widest uppercase">
-              Today&apos;s challenge complete — come back tomorrow
+            <div className="w-full rounded-2xl border border-white/10 p-5 flex flex-col items-center gap-3 text-center">
+              <span className="text-[10px] uppercase tracking-[0.2em] text-text-muted">bpm. #{getPuzzleNumber(getDailyDateString())} complete</span>
+              {bpmDailyResult && (
+                <span className="font-display text-white text-4xl leading-none tracking-tighter">
+                  {bpmDailyResult.total.toFixed(2)} <span className="text-text-faint text-lg">/ 20</span>
+                </span>
+              )}
+              <NextPuzzleCountdown />
+              <div className="flex gap-2 w-full mt-1">
+                {bpmDailyResult && (
+                  <button
+                    onClick={shareDaily}
+                    className="flex-1 py-3 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2"
+                  ><Share2 className="size-3.5" /> Share</button>
+                )}
+                <button
+                  onClick={() => setSelectedMode('practice')}
+                  className="flex-1 py-3 rounded-full border border-white/20 text-white text-xs tracking-widest uppercase hover:bg-white/10 transition-all"
+                >Practice</button>
+              </div>
             </div>
           ) : (
             <button
-              onClick={() => startGame(selectedMode)}
+              onClick={() => handleStart(selectedMode)}
               className="w-full py-4 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-sm"
             >
               Start {selectedMode === 'daily' ? 'Daily' : 'Game'}
@@ -209,14 +236,10 @@ export default function BpmGame({
             <div className="w-full flex flex-col items-center gap-3">
               <button
                 onPointerDown={() => {
-                  const now = Date.now();
-                  const updated = [...tapTimes, now];
+                  const updated = [...tapTimes, Date.now()];
                   setTapTimes(updated);
-                  if (updated.length >= 2) {
-                    const diffs = updated.slice(1).map((t, i) => t - updated[i]);
-                    const avg = diffs.reduce((a, b) => a + b, 0) / diffs.length;
-                    setSliderBpm(Math.max(sliderMin, Math.min(sliderMax, Math.round(60000 / avg))));
-                  }
+                  const tapped = bpmFromTaps(updated);
+                  if (tapped !== null) setSliderBpm(tapped);
                   if (tapResetTimerRef.current) clearTimeout(tapResetTimerRef.current);
                   tapResetTimerRef.current = setTimeout(() => setTapTimes([]), 2000);
                 }}
@@ -319,9 +342,10 @@ export default function BpmGame({
             {isNewBpmBest && (
               <p className="text-orange-400 text-xs tracking-widest uppercase mt-2 font-bold">🎉 New Personal Best!</p>
             )}
-            {bpmStreak > 1 && (
+            {mode === 'daily' && bpmStreak > 1 && (
               <p className="text-text-muted text-xs tracking-widest mt-1">🔥 {bpmStreak} day streak</p>
             )}
+            {mode === 'daily' && <div className="mt-3 flex justify-center"><NextPuzzleCountdown /></div>}
           </div>
           <div className="grid grid-cols-5 gap-px bg-border p-px overflow-hidden rounded-sm">
             {results.map((r, i) => (
@@ -336,14 +360,9 @@ export default function BpmGame({
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => {
-                const total = results.reduce((s, r) => s + r.points, 0).toFixed(2);
-                const text = `bpm. — ${total} / 20.00\n${results.map(r => r.emoji).join('')}\n\nhttps://pitchd.net`;
-                navigator.clipboard.writeText(text).catch(() => {});
-                showToast('Copied!');
-              }}
-              className="flex-1 py-3 rounded-full border border-border text-white hover:bg-white hover:text-black transition-all tracking-widest uppercase text-xs"
-            >Share</button>
+              onClick={shareFinal}
+              className="flex-1 py-3 rounded-full border border-border text-white hover:bg-white hover:text-black transition-all tracking-widest uppercase text-xs flex items-center justify-center gap-2"
+            ><Share2 className="size-3.5" /> Share</button>
             <button
               onClick={resetGame}
               className="flex-1 py-3 rounded-full bg-white text-black font-semibold tracking-widest uppercase hover:bg-neutral-200 active:scale-[0.98] transition-all text-xs"

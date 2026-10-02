@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import GameClient from '@/components/GameClient';
+import Link from 'next/link';
+import GameShell from '@/components/GameShell';
 
 export const metadata: Metadata = {
-  title: 'BPM Guesser — Free Rhythm & Tempo Training Game | pitchd.',
+  title: 'BPM Guesser — Free Rhythm & Tempo Training Game',
   description: 'Test your sense of rhythm. Listen to a mystery tempo and guess the BPM — can you match it exactly? Free rhythm ear training game, no sign-up needed.',
   keywords: ['bpm game', 'bpm guesser', 'tempo training game', 'rhythm ear training', 'guess the bpm', 'metronome game', 'beat recognition', 'music rhythm game', 'free bpm test', 'pitchd'],
   alternates: { canonical: 'https://pitchd.net/bpm' },
@@ -12,13 +13,13 @@ export const metadata: Metadata = {
     url: 'https://pitchd.net/bpm',
     siteName: 'pitchd.',
     type: 'website',
-    images: [{ url: 'https://pitchd.net/og.png', width: 1200, height: 630, alt: 'pitchd. BPM Guesser' }],
+    images: [{ url: 'https://pitchd.net/api/og?game=bpm', width: 1200, height: 630, alt: 'pitchd. BPM Guesser' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'BPM Guesser | pitchd.',
     description: 'Can you match the mystery tempo? Free rhythm training game.',
-    images: ['https://pitchd.net/og.png'],
+    images: ['https://pitchd.net/api/og?game=bpm'],
   },
 };
 
@@ -32,7 +33,7 @@ export default function BpmPage() {
             "@context": "https://schema.org",
             "@type": "WebApplication",
             "name": "BPM Guesser — pitchd.",
-            "description": "A 5-round rhythm game where you listen to a mystery metronome tempo and guess the BPM using a slider. Score is based on percentage accuracy.",
+            "description": "A 5-round rhythm game where you listen to a mystery metronome tempo and guess the BPM by tapping along or using a slider. Score is based on percentage accuracy.",
             "applicationCategory": "Game",
             "genre": ["Rhythm", "Music", "Educational"],
             "operatingSystem": "WebBrowser",
@@ -54,7 +55,7 @@ export default function BpmPage() {
                 "name": "How does the BPM Guesser work?",
                 "acceptedAnswer": {
                   "@type": "Answer",
-                  "text": "A metronome plays at a random mystery BPM for a few seconds with a countdown. Once it stops, you drag a slider to set your BPM guess and submit. The game plays 5 rounds and shows your total score. The slider also plays a live metronome at your current guess so you can compare."
+                  "text": "A metronome plays at a random mystery BPM for a few seconds with a countdown. Once it stops, you tap along to the beat (or drag a slider) to set your BPM guess and submit. The game plays 5 rounds and shows your total score. The slider also plays a live metronome at your current guess so you can compare."
                 }
               },
               {
@@ -77,17 +78,17 @@ export default function BpmPage() {
           })
         }}
       />
-      <div className="sr-only" aria-hidden="false">
+      <div className="sr-only">
         <h1>BPM Guesser — Free Rhythm & Tempo Training Game</h1>
         <p>
           pitchd.&apos;s BPM Guesser tests your sense of rhythm and tempo recognition. A mystery metronome
-          plays for a few seconds — listen carefully, then use a slider to guess the exact BPM.
+          plays for a few seconds — listen carefully, then tap along or use a slider to guess the exact BPM.
           The slider plays a live metronome at your current guess so you can compare in real time.
         </p>
         <h2>How to Play</h2>
         <ol>
           <li>Press Play — a metronome clicks at a mystery BPM with a countdown timer.</li>
-          <li>After the countdown, use the slider to match the BPM you heard.</li>
+          <li>After the countdown, tap the beat or use the slider to match the BPM you heard.</li>
           <li>The slider plays the metronome live at your guess — adjust until it sounds right.</li>
           <li>Submit your guess and see your score. Play 5 rounds for a final score.</li>
         </ol>
@@ -100,12 +101,12 @@ export default function BpmPage() {
           <li>Miss — beyond 25% — 0 points</li>
         </ul>
         <nav>
-          <a href="/bpm/scoring">BPM Scoring Guide</a>
-          <a href="/bpm/articles">Rhythm &amp; BPM Training Articles</a>
-          <a href="/">Pitch Game</a>
+          <Link href="/bpm/scoring">BPM Scoring Guide</Link>
+          <Link href="/bpm/articles">Rhythm &amp; BPM Training Articles</Link>
+          <Link href="/">Pitch Game</Link>
         </nav>
       </div>
-      <GameClient />
+      <GameShell />
     </>
   );
 }

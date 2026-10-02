@@ -1,38 +1,46 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from '@/lib/supabase';
+import { isPlausibleDailyDate } from '@/lib/daily';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+// Top 10 for one daily puzzle. The client passes its local date (?date=YYYY-MM-DD)
+// so the board matches the puzzle the player actually saw.
+export async function GET(request: Request) {
+  const requested = new URL(request.url).searchParams.get('date');
+  const date = isPlausibleDailyDate(requested) ? requested! : new Date().toISOString().slice(0, 10);
+
+  const supabase = getSupabase();
+  if (!supabase) {
+    // Placeholder data so the UI can be developed without Supabase.
+    return NextResponse.json({
+      date,
+      top_scores: [
+        { initials: 'HDK', score: 49.21 },
+        { initials: 'ALX', score: 45.10 },
+        { initials: 'SAM', score: 42.02 },
+        { initials: 'JON', score: 38.50 },
+        { initials: 'DOE', score: 34.00 },
+      ],
+    });
+  }
+
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-    // Use placeholder data if Supabase isn't hooked up locally
-    if (!supabaseUrl || !supabaseKey) {
-      return NextResponse.json({
-        top_scores: [
-          { initials: 'HDK', score: 49.21, device_id: '1', created_at: new Date().toISOString() },
-          { initials: 'ALX', score: 45.10, device_id: '2', created_at: new Date().toISOString() },
-          { initials: 'SAM', score: 42.02, device_id: '3', created_at: new Date().toISOString() },
-          { initials: 'JON', score: 38.50, device_id: '4', created_at: new Date().toISOString() },
-          { initials: 'DOE', score: 34.00, device_id: '5', created_at: new Date().toISOString() }
-        ]
-      });
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
     const { data, error } = await supabase
       .from('scores')
-      .select('device_id, score, initials, created_at')
+      .select('initials, score')
+      .eq('date_str', date)
       .order('score', { ascending: false })
+      .order('created_at', { ascending: true })
       .limit(10);
-
     if (error) throw error;
 
-    return NextResponse.json({ top_scores: data });
-  } catch {
-    return NextResponse.json({ top_scores: [] });
+    return NextResponse.json(
+      { date, top_scores: data },
+      { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' } },
+    );
+  } catch (err) {
+    console.error('Leaderboard GET error:', err);
+    return NextResponse.json({ date, top_scores: [] }, { status: 500 });
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
-import { scoreNote, NOTES } from '@/lib/seed';
+import { scoreNote, scoreRound, NOTES } from '@/lib/seed';
 import { engine } from '@/lib/audio';
 import gsap from 'gsap';
 import Piano from './Piano';
@@ -9,7 +9,8 @@ import Piano from './Piano';
 interface ScoreRevealProps {
   correctSequence: string[];
   playerSequence: string[];
-  onComplete: (score: number) => void;
+  isLastRound?: boolean;
+  onComplete: () => void;
 }
 
 const QUIPS = {
@@ -91,14 +92,13 @@ const QUIPS = {
   ],
 };
 
-export default function ScoreReveal({ correctSequence, playerSequence, onComplete }: ScoreRevealProps) {
+export default function ScoreReveal({ correctSequence, playerSequence, isLastRound = false, onComplete }: ScoreRevealProps) {
   const [highlights, setHighlights] = useState<{ note: string, color: 'blue' | 'red' | 'green' | 'yellow' }[]>([]);
   const [currentScore, setCurrentScore] = useState(0);
   const scoreRef = useRef(0);
 
   const [isRevealing, setIsRevealing] = useState(true);
   const [quip, setQuip] = useState("");
-  const finalScoreRef = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
@@ -160,7 +160,6 @@ export default function ScoreReveal({ correctSequence, playerSequence, onComplet
       }
 
       if (isMounted) {
-        finalScoreRef.current = Math.round(totalScore * 100) / 100;
         let category: keyof typeof QUIPS = 'terrible';
         if (totalScore >= 9.5) category = 'perfect';
         else if (totalScore >= 8.5) category = 'great';
@@ -184,7 +183,7 @@ export default function ScoreReveal({ correctSequence, playerSequence, onComplet
       <div className="flex items-center justify-center flex-col">
         <h3 className="text-text-muted text-sm uppercase tracking-widest mb-2 font-display">Score</h3>
         <h2 className="text-6xl text-white font-display pb-2">
-          {currentScore.toFixed(2)} <span className="text-2xl text-text-faint">/ 10</span>
+          {(isRevealing ? currentScore : scoreRound(playerSequence, correctSequence)).toFixed(2)} <span className="text-2xl text-text-faint">/ 10</span>
         </h2>
         <div className="h-px w-16 bg-border mb-4" />
 
@@ -205,10 +204,10 @@ export default function ScoreReveal({ correctSequence, playerSequence, onComplet
         {!isRevealing && (
           <button
             autoFocus
-            onClick={() => onComplete(finalScoreRef.current)}
+            onClick={onComplete}
             className="px-10 py-3 rounded-full border border-border text-white hover:bg-white hover:text-black transition-colors text-sm font-semibold tracking-widest uppercase animate-in fade-in zoom-in-95 focus:outline-none focus:ring-2 focus:ring-white/50 focus:bg-white focus:text-black"
           >
-            Next Round
+            {isLastRound ? 'See Results' : 'Next Round'}
           </button>
         )}
       </div>

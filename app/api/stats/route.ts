@@ -1,34 +1,32 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { getSupabase } from '@/lib/supabase';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const CACHE = { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' };
+// Baseline offsets carried over from before session logging existed.
+const PITCH_BASELINE = 1000;
+const BPM_BASELINE = 500;
 
-  if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json(
-      { games: 14238, notes: 398664, bpmGames: 500 },
-      { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
-    );
+export async function GET() {
+  const supabase = getSupabase();
+  if (!supabase) {
+    return NextResponse.json({ games: 14238, notes: 284760, bpmGames: 500 }, { headers: CACHE });
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  try {
+    const [{ count: pitchCount }, { count: bpmCount }] = await Promise.all([
+      supabase.from('game_sessions').select('*', { count: 'exact', head: true }),
+      supabase.from('bpm_sessions').select('*', { count: 'exact', head: true }),
+    ]);
 
-  const [{ count: pitchCount }, { count: bpmCount }] = await Promise.all([
-    supabase.from('game_sessions').select('*', { count: 'exact', head: true }),
-    supabase.from('bpm_sessions').select('*', { count: 'exact', head: true }),
-  ]);
-
-  const totalGames = 1000 + (pitchCount || 0);
-
-  return NextResponse.json(
-    {
-      games: totalGames,
-      notes: totalGames * 20,
-      bpmGames: 500 + (bpmCount || 0),
-    },
-    { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
-  );
+    const games = PITCH_BASELINE + (pitchCount || 0);
+    return NextResponse.json(
+      { games, notes: games * 20, bpmGames: BPM_BASELINE + (bpmCount || 0) },
+      { headers: CACHE },
+    );
+  } catch (err) {
+    console.error('Stats GET error:', err);
+    return NextResponse.json({ error: 'unavailable' }, { status: 503 });
+  }
 }

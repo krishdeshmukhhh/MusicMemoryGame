@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: '404 - Not Found | pitchd.',
+  title: '404 - Not Found',
   description: 'The page you are looking for does not exist.',
 };
 
@@ -22,7 +22,7 @@ export default function NotFound() {
         </h2>
         
         <p className="text-[#a0a0a0] mb-12 font-sans leading-relaxed px-4">
-          It looks like your ears wandered a bit too far off pitch. The frequency you are looking for doesn't exist.
+          It looks like your ears wandered a bit too far off pitch. The frequency you are looking for doesn&apos;t exist.
         </p>
         
         <Link 

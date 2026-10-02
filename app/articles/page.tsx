@@ -1,9 +1,10 @@
 import { Metadata } from 'next';
-import GameClient from '@/components/GameClient';
+import GameShell from '@/components/GameShell';
 import { PITCH_ARTICLES } from '@/lib/pitch-articles';
+import { toArticleIndex } from '@/lib/articles';
 
 export const metadata: Metadata = {
-  title: 'Ear Training & Perfect Pitch Guides | pitchd. Articles',
+  title: 'Ear Training & Perfect Pitch Guides',
   description: 'In-depth guides on perfect pitch, relative pitch, interval recognition, and daily ear training routines. Free articles from pitchd.',
   keywords: ['ear training guides', 'perfect pitch articles', 'interval recognition guide', 'relative pitch training', 'music theory articles', 'pitchd'],
   alternates: {
@@ -14,19 +15,17 @@ export const metadata: Metadata = {
     description: 'In-depth guides on perfect pitch, relative pitch, interval recognition, and daily ear training routines.',
     url: 'https://pitchd.net/articles',
     type: 'website',
-    images: [{ url: 'https://pitchd.net/og.png', width: 1200, height: 630 }],
+    images: [{ url: 'https://pitchd.net/api/og?title=Ear+Training+%26+Perfect+Pitch+Guides&kicker=Articles', width: 1200, height: 630 }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Ear Training Guides | pitchd.',
     description: 'Perfect pitch, interval recognition, and ear training — free articles.',
-    images: ['https://pitchd.net/og.png'],
+    images: ['https://pitchd.net/api/og?title=Ear+Training+%26+Perfect+Pitch+Guides&kicker=Articles'],
   },
 };
 
-const ARTICLES = Object.entries(PITCH_ARTICLES)
-  .sort((a, b) => new Date(b[1].date).getTime() - new Date(a[1].date).getTime())
-  .map(([slug, article]) => ({ slug, title: article.title }));
+const ARTICLES = toArticleIndex(PITCH_ARTICLES);
 
 export default function ArticlesPage() {
   return (
@@ -49,7 +48,7 @@ export default function ArticlesPage() {
           })
         }}
       />
-      <GameClient />
+      <GameShell />
     </>
   );
 }
